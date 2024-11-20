@@ -14,7 +14,7 @@ BOM:
 * USB cable and 12v
 * 3x transformer (XICON 42TU200-RC suggested)
 * 3x inductor (100-470µH 1A, exact specs TBD)
-* 3x ceramic caps (1-10µC 50v, exact specs TBD)
+* 3x ceramic caps (1-10µF 50v, exact specs TBD)
 
 How to wire:
 
