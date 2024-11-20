@@ -48,9 +48,9 @@ void MRACThreephaseStar::iter(
     float u_low = min(u_a, min(u_b, u_c));
 
     // check voltage limits
-    if ((u_high - u_low) > (STIM_PSU_VOLTAGE * STIM_MAX_DUTY_CYCLE))
+    if ((u_high - u_low) > (STIM_PSU_VOLTAGE * STIM_PWM_MAX_DUTY_CYCLE))
     {
-        float q = (STIM_PSU_VOLTAGE * STIM_MAX_DUTY_CYCLE) / (u_high - u_low);
+        float q = (STIM_PSU_VOLTAGE * STIM_PWM_MAX_DUTY_CYCLE) / (u_high - u_low);
         r_a *= q;
         u_a *= q;
         r_b *= q;
@@ -63,10 +63,11 @@ void MRACThreephaseStar::iter(
     v_drive_max = max(v_drive_max, u_high - u_low);
 
     // Control hardware
-    // use pwm centered, but if duty cycle is very high shift the waveform up
-    // to help pwm rejection of current sense circuit.
+    // use pwm centered, for maximum waveform smoothness
+    // but if duty cycle is high shift the waveform down to help pwm rejection of current sense circuit.
     float center = driver->voltage_power_supply / 2;
-    center = center + max(0.f, (STIM_PSU_VOLTAGE * (1 - STIM_MAX_DUTY_CYCLE)) - (center + u_low));
+    float offset = min(0.f, (STIM_PSU_VOLTAGE * STIM_PWM_MAX_DUTY_CYCLE) - (center + u_high));
+    center = center + offset;
     driver->setPwm(
         center + u_c, // right, output closest to the pot
         center + u_a, // neutral, center output

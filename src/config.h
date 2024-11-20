@@ -10,7 +10,8 @@
 #define STIM_PSU_VOLTAGE 12.0f
 #define STIM_PSU_VOLTAGE_MIN 11.5f // e-stop if exceeded
 #define STIM_PSU_VOLTAGE_MAX 12.5f // e-stop if exceeded
-#define STIM_MAX_DUTY_CYCLE 0.8f   // Limited by pwm-rejection capabilities of current sense circuit. Depends on pwm freq
+#define STIM_PWM_MINIMUM_OFF_TIME 4e-6f // limited by pwm-rejection of current sense. Experimentally determined to be 3.15us.
+#define STIM_PWM_MAX_DUTY_CYCLE float(1 - STIM_PWM_MINIMUM_OFF_TIME * STIM_PWM_FREQ)
 
 // initial conditions and limits for the model
 #define MODEL_RESISTANCE_INIT 2.0f
