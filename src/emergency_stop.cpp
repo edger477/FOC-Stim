@@ -29,8 +29,10 @@ void EmergencyStop::check_current_limits()
 
 void EmergencyStop::check_current_limits(float a, float b, float c)
 {
-    max_recorded_current = max({max_recorded_current, abs(a), abs(b), abs(c)});
-    if (max_recorded_current > ESTOP_CURRENT_LIMIT)
+    max_recorded_current_a = abs(max_recorded_current_a) > abs(a) ? max_recorded_current_a : a;
+    max_recorded_current_b = abs(max_recorded_current_b) > abs(b) ? max_recorded_current_b : b;
+    max_recorded_current_c = abs(max_recorded_current_c) > abs(c) ? max_recorded_current_c : c;
+    if (max({abs(a), abs(b), abs(c)}) > ESTOP_CURRENT_LIMIT)
     {
         trigger_emergency_stop();
         while (1)

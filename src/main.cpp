@@ -240,8 +240,14 @@ void loop()
         Serial.print("$");
         Serial.printf("L:%.2f ", mrac2.estimate_inductance() * 1e6f);
         Serial.printf("V_drive:%.2f ", mrac2.v_drive_max);
-        Serial.printf("I_max:%f ", emergencyStop.max_recorded_current);
+        Serial.printf("I_max_a:%f ", abs(emergencyStop.max_recorded_current_a));
+        Serial.printf("I_max_b:%f ", abs(emergencyStop.max_recorded_current_b));
+        Serial.printf("I_max_c:%f ", abs(emergencyStop.max_recorded_current_c));
         Serial.println();
+        emergencyStop.max_recorded_current_a = 0;
+        emergencyStop.max_recorded_current_b = 0;
+        emergencyStop.max_recorded_current_c = 0;
+
     }
     if ((loop_counter + 4) % 10 == 0)
     {
@@ -284,8 +290,9 @@ void loop()
     mrac2.prepare_for_idle();
     traceline->v_drive_max = mrac2.v_drive_max;
     mrac2.v_drive_max = 0;
-    traceline->max_recorded_current = emergencyStop.max_recorded_current;
-    emergencyStop.max_recorded_current = 0;
+    traceline->max_recorded_current_a = emergencyStop.max_recorded_current_a;
+    traceline->max_recorded_current_b = emergencyStop.max_recorded_current_b;
+    traceline->max_recorded_current_c = emergencyStop.max_recorded_current_c;
     traceline->Ra = mrac2.estimate_r1();
     traceline->Rb = mrac2.estimate_r2();
     traceline->Rc = mrac2.estimate_r3();

@@ -21,7 +21,9 @@ public:
     // Put hardware in safe state, then call the debug function
     void trigger_emergency_stop();
 
-    float max_recorded_current = 0;
+    float max_recorded_current_a = 0;
+    float max_recorded_current_b = 0;
+    float max_recorded_current_c = 0;
 
     BLDCDriver6PWM *driver = nullptr;
     CurrentSense *currentSense = nullptr;

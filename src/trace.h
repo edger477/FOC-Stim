@@ -20,7 +20,9 @@ struct MainLoopTraceLine
     float xhat_a2;
     float xhat_b2;
     float v_drive_max;
-    float max_recorded_current;
+    float max_recorded_current_a;
+    float max_recorded_current_b;
+    float max_recorded_current_c;
     float amplitude;
     float Ra, Rb, Rc, L, pia, pib;
 };
@@ -57,17 +59,19 @@ public:
         }
         Serial.println();
         Serial.printf("mainloop signals:\r\n");
-        Serial.printf("   xHat_a1|   xHat_b1|   xHat_a2|   xHat_b2|   v_drive|  max curr| amplitude|\r\n");
+        Serial.printf("   xHat_a1|   xHat_b1|   xHat_a2|   xHat_b2|   v_drive|   max I_a|   max I_b|   max I_c| amplitude|\r\n");
         for (int i = 0; i < MAINLOOP_NUM_ENTRIES; i++)
         {
             MainLoopTraceLine *p = &main_loop_trace[(i + main_loop_trace_index) % MAINLOOP_NUM_ENTRIES];
-            Serial.printf("%10f %10f %10f %10f %10f %10f %10f\r\n",
+            Serial.printf("%10f %10f %10f %10f %10f %10f %10f %10f %10f\r\n",
                           p->xhat_a1,
                           p->xhat_b1,
                           p->xhat_a2,
                           p->xhat_b2,
                           p->v_drive_max,
-                          p->max_recorded_current,
+                          p->max_recorded_current_a,
+                          p->max_recorded_current_b,
+                          p->max_recorded_current_c,
                           p->amplitude);
         }
         Serial.println();
