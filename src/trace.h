@@ -36,7 +36,8 @@ public:
 
     MainLoopTraceLine *next_main_loop_line()
     {
-        MainLoopTraceLine *p = &main_loop_trace[main_loop_trace_index++ % MAINLOOP_NUM_ENTRIES];
+        MainLoopTraceLine *p = &main_loop_trace[main_loop_trace_index];
+        main_loop_trace_index = (main_loop_trace_index + 1) % MAINLOOP_NUM_ENTRIES;
         *p = {};
         return p;
     }
