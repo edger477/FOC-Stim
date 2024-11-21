@@ -73,7 +73,7 @@ public:
     static constexpr float B = 1 / L0;
     static constexpr float P = -1;
 
-    static constexpr int DEBUG_NUM_ENTRIES = 450; // very RAM hungry
+    static constexpr int DEBUG_NUM_ENTRIES = 400; // very RAM hungry
 
     MRACThreephaseStar();
 
@@ -121,9 +121,9 @@ public:
     {
         float r_a;
         float r_b;
-        float predicted_state_a;
-        float predicted_state_b;
-    } prev_state = {};
+        float xHat_a;
+        float xHat_b;
+    } state_lag1 = {};
 
     // log stats
     float neutral_abs_sum = 0;
@@ -137,15 +137,11 @@ public:
     // more log stats
     struct
     {
-        float meas_a;
-        float meas_b;
-        float xhat_a;
-        float xhat_b;
-        float desired_a;
-        float desired_b;
-        float va;
-        float vb;
-        float dt;
+        float r_a, r_b;
+        float u_a, u_b;
+        float x_a, x_b, x_c;
+        float xHat_a, xHat_b;
+        float desired_a, desired_b;
     } debug[DEBUG_NUM_ENTRIES] = {};
 };
 
