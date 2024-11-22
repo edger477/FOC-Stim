@@ -101,22 +101,43 @@ struct TCodeAxis
     }
 };
 
+struct TCodeDeviceCommand {
+    TCodeDeviceCommand(const char* command_string, std::function<void()> fn)
+        : command_string(command_string)
+        , fn(fn)
+    {}
+
+    const char* command_string;
+    std::function<void()> fn;
+};
+
 class TCode
 {
 public:
-    TCode(TCodeAxis *axes, unsigned axes_num)
+    TCode(TCodeAxis *axes, unsigned axes_num,
+            TCodeDeviceCommand* device_commands, unsigned device_commands_num)
         : axes(axes), axes_num(axes_num)
+        , device_commands(device_commands), device_commands_num(device_commands_num)
     {
     }
 
     bool update_from_serial();
 
-    bool parse_data(const char *buffer, size_t len);
+    bool parse_single_line(const char *buffer, size_t len);
 
-    bool send_command(TCodeCommand cmd);
+    bool update_axis(TCodeCommand cmd);
+    bool execute_device_command(TCodeCommand cmd);
+
+    // Look in the datastream for the first TCode command
+    // if tcode command was found, return the number of bytes parsed.
+    // else, return -1.
+    int try_parse_tcode_command(const char *buffer, size_t len, TCodeCommand *out);
+
 
     TCodeAxis *axes;
     unsigned axes_num;
+    TCodeDeviceCommand *device_commands;
+    unsigned device_commands_num;
 
     char serial_buffer[256];
     int buffer_index = 0;

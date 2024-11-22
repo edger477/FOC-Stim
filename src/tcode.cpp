@@ -28,7 +28,10 @@ size_t count_digits(const char *buffer, size_t start, size_t end)
     return end - start;
 }
 
-int parse_tcode(const char *buffer, size_t len, TCodeCommand *out)
+// Look in the datastream for the first TCode command
+// if tcode command was found, return the number of bytes parsed.
+// else, return -1.
+int TCode::try_parse_tcode_command(const char *buffer, size_t len, TCodeCommand *out)
 {
     memset(out, 0, sizeof(TCodeCommand));
 
@@ -37,12 +40,34 @@ int parse_tcode(const char *buffer, size_t len, TCodeCommand *out)
     {
         char ch = buffer[index];
         // first character of the command must be A-Z
-        if (ch > 'Z' || ch < 'A')
+        if (ch < 'A' || ch > 'Z')
         {
             index += 1;
             continue;
         }
         out->id.type = ch;
+
+        if (ch == 'D') {
+            size_t next_delimitter_location = find_delimitter(buffer, index + 1, len);
+            size_t cmd_len = 0;
+            if (next_delimitter_location == -1) {
+                cmd_len = len - index - 1;
+            } else {
+                cmd_len = next_delimitter_location - index - 1;
+            }
+
+            for (int cmd_index = 0; cmd_index < device_commands_num; cmd_index++) {
+                TCodeDeviceCommand* cmd = &device_commands[cmd_index];
+                if (cmd_len == strlen(cmd->command_string)) {
+                    if (0 == strncmp(buffer + index + 1, cmd->command_string, cmd_len)) {
+                        out->id.num = cmd_index;
+                        return index + 1 + cmd_len;
+                    }
+                }
+            }
+            index++;
+            continue;
+        }
 
         // read channel num, 1 digit
         char channel_ch = buffer[index + 1];
@@ -113,7 +138,7 @@ bool TCode::update_from_serial()
             // start parsing on newline
             if (c == '\r' || c == '\n' || buffer_index >= 255)
             {
-                dirty |= parse_data(serial_buffer, buffer_index);
+                dirty |= parse_single_line(serial_buffer, buffer_index);
                 memset(serial_buffer, 0, sizeof(serial_buffer) / sizeof(serial_buffer[0]));
                 buffer_index = 0;
             }
@@ -122,7 +147,7 @@ bool TCode::update_from_serial()
     return dirty;
 }
 
-bool TCode::parse_data(const char *buffer, size_t len)
+bool TCode::parse_single_line(const char *buffer, size_t len)
 {
     TCodeCommand cmd;
     int ret = 0;
@@ -130,30 +155,27 @@ bool TCode::parse_data(const char *buffer, size_t len)
     bool dirty = false;
     while (1)
     {
-        ret = parse_tcode(buffer + index, len - index, &cmd);
+        ret = try_parse_tcode_command(buffer + index, len - index, &cmd);
         if (ret == -1)
         {
             return dirty;
         }
 
-        dirty |= send_command(cmd);
+        if (cmd.id.type == 'D') {
+            dirty |= execute_device_command(cmd);
+        } else {
+            dirty |= update_axis(cmd);
+        }
+
         index += ret;
     }
 }
 
-bool TCode::send_command(TCodeCommand cmd)
+bool TCode::update_axis(TCodeCommand cmd)
 {
     bool dirty = false;
 
-    unsigned long interval_us;
-    if (cmd.interval == 0)
-    {
-        interval_us = 30000;
-    }
-    else
-    {
-        interval_us = (unsigned long)cmd.interval * 1000;
-    }
+    unsigned long interval_us = (unsigned long)cmd.interval * 1000;
 
     unsigned i = 0;
     for (i = 0; i < axes_num; i++)
@@ -178,4 +200,13 @@ bool TCode::send_command(TCodeCommand cmd)
     //     Serial.println();
     // }
     return dirty;
+}
+
+bool TCode::execute_device_command(TCodeCommand cmd)
+{
+    if (cmd.id.num < device_commands_num) {
+        device_commands[cmd.id.num].fn();
+        return true;
+    }
+    return false;
 }

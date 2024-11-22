@@ -23,6 +23,33 @@ Trace trace{};
 
 EmergencyStop emergencyStop{};
 
+static bool vbus_online = false;
+static bool play_started = false;
+static Clock keepalive_clock{};
+
+void tcode_D0() {
+    Serial.println();
+    Serial.printf("FOC-Stim 0.1\r\n");
+}
+
+void tcode_DSTART() {
+    if (vbus_online && !play_started) {
+        Serial.printf("Pulse generation started\r\n");
+    }
+    play_started = true;
+}
+
+void tcode_DSTOP() {
+    if (vbus_online && play_started) {
+        Serial.printf("Pulse generation stopped\r\n");
+    }
+    play_started = false;
+}
+
+void tcode_DPING() {
+    keepalive_clock.reset();
+}
+
 struct
 {
     TCodeAxis alpha{"L0", 0, -1, 1};
@@ -34,10 +61,15 @@ struct
     TCodeAxis calib_center{"C0", 0, -10, 10};
     TCodeAxis calib_ud{"C1", 0, -10, 10};
     TCodeAxis calib_lr{"C2", 0, -10, 10};
-    TCodeAxis boot_dummy{"B9", 0, 0, 1};
 } axes;
-// TODO: special commands?
-TCode tcode(reinterpret_cast<TCodeAxis *>(&axes), sizeof(axes) / sizeof(TCodeAxis));
+struct {
+    TCodeDeviceCommand d0{"0", &tcode_D0};
+    TCodeDeviceCommand d_start{"START", &tcode_DSTART};
+    TCodeDeviceCommand d_stop{"STOP", &tcode_DSTOP};
+    TCodeDeviceCommand d_ping{"PING", &tcode_DPING};
+} tcode_device_commands;
+TCode tcode(reinterpret_cast<TCodeAxis *>(&axes), sizeof(axes) / sizeof(TCodeAxis),
+            reinterpret_cast<TCodeDeviceCommand *>(&tcode_device_commands), sizeof(tcode_device_commands) / sizeof(TCodeDeviceCommand));
 
 void estop_triggered()
 {
@@ -59,7 +91,7 @@ void setup()
     driver.pwm_frequency = STIM_PWM_FREQ;
     driver.init();
 
-    Serial.printf("- init emergency stop\r\n");
+    Serial.println("- init emergency stop");
     emergencyStop.init(&driver, &currentSense, &estop_triggered);
 
     Serial.println("- init current sense");
@@ -80,46 +112,29 @@ void setup()
     // mrac.init(&driver, &currentSense);
     mrac2.init(&driver, &currentSense, &emergencyStop);
 
-    _delay(100);
+    Clock vbus_clock;
     while (1)
     {
+        tcode.update_from_serial();
+        vbus_clock.step();
         float vbus = read_vbus(&currentSense);
         if (vbus > STIM_PSU_VOLTAGE_MAX || vbus < STIM_PSU_VOLTAGE_MIN)
         {
-            Serial.printf("V_BUS:%f waiting for V_BUS to come online...\r\n", vbus);
-            Clock clock;
-            while (clock.time_seconds < 1)
-            {
-                tcode.update_from_serial();
-                clock.step();
+            if (vbus_clock.time_seconds > 4.f) {
+                Serial.printf("V_BUS:%f waiting for V_BUS to come online...\r\n", vbus);
+                vbus_clock.reset();
             }
         }
         else
         {
+            vbus_online = true;
+            delay(50);
             Serial.printf("V_BUS:%f\r\n", vbus);
             break;
         }
     }
-    while (1)
-    {
-        bool restim_detected = axes.boot_dummy.get_remap(millis()) > 0.5f;
-        if (!restim_detected)
-        {
-            Serial.printf("waiting for restim...\r\n");
-            Clock clock;
-            while (clock.time_seconds < 1)
-            {
-                tcode.update_from_serial();
-                clock.step();
-            }
-        }
-        else
-        {
-            break;
-        }
-    }
-
-    Serial.printf("loop start\r\n");
+    play_started = false;
+    Serial.printf("Device ready. Awaiting DSTART.\r\n");
 }
 
 void loop()
@@ -127,6 +142,25 @@ void loop()
     static uint32_t loop_counter = 0;
     static float actual_pulse_frequency = 0;
     static uint32_t last_loop_start_time = micros();
+
+    // grab the new pulse parameters from serial comms
+    bool dirty = tcode.update_from_serial();
+
+    if (dirty) {
+        keepalive_clock.reset();
+    }
+    keepalive_clock.step();
+
+    if (! play_started) {
+        delay(10);
+        return;
+    }
+
+    if (keepalive_clock.time_seconds > 2) {
+        Serial.println("Connection lost? Stopping pulse generation.");
+        play_started = false;
+        return;
+    }
 
     MainLoopTraceLine *traceline = trace.next_main_loop_line();
     traceline->t_start = micros();
@@ -136,9 +170,6 @@ void loop()
     uint32_t loop_start_time = micros();
     actual_pulse_frequency = lerp(.05f, actual_pulse_frequency, 1 / (float(loop_start_time - last_loop_start_time) * 1e-6f));
     last_loop_start_time = loop_start_time;
-
-    // grab the new pulse parameters from serial comms
-    tcode.update_from_serial();
 
     float pulse_alpha = axes.alpha.get_remap(loop_start_time);
     float pulse_beta = axes.beta.get_remap(loop_start_time);
