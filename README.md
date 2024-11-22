@@ -1,6 +1,8 @@
 FOC-Stim is an implementation of the [Restim](https://github.com/diglet48/restim) threephase signal generation algorithm
 for the [B-G431B-ESC1](https://www.st.com/en/evaluation-tools/b-g431b-esc1.html) electronic speed controller.
 
+FOC stands for Field Oriented Control, an algorithm for controlling motors, referencing the intended purpose of the hardware.
+
 It utilizes MRAC (model reference adaptive control) to generate consistent current-controlled waveforms
 as environment conditions change.
 
@@ -32,3 +34,5 @@ Inspect `FOC-Stim/src/config.h` to configure the current limits.
 Control over serial with Restim.
 
 View live stats with teleplot.
+
+All restim features are supported except: pulse rise time, pulse interval random, vibration, transform.
