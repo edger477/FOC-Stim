@@ -7,11 +7,11 @@
 struct MainLoopTraceLine
 {
     uint32_t t_start;
-    uint32_t t_compute_start;
-    uint32_t t_pulse_play_start;
-    uint32_t t_logs;
-    uint32_t t_idle;
-    uint32_t t_end;
+    uint32_t dt_comms;
+    uint32_t dt_compute;
+    uint32_t dt_play;
+    uint32_t dt_logs;
+    uint32_t dt_pause;
     uint32_t mrac_iters;
     float pulse_active_duration;
     float pause_duration;
@@ -51,11 +51,11 @@ public:
             MainLoopTraceLine *p = &main_loop_trace[(i + main_loop_trace_index) % MAINLOOP_NUM_ENTRIES];
             Serial.printf("%10lu %10lu %10lu %10lu %10lu %10lu %10lu\r\n",
                           p->t_start,
-                          p->t_compute_start - p->t_start,
-                          p->t_pulse_play_start - p->t_compute_start,
-                          p->t_logs - p->t_pulse_play_start,
-                          p->t_idle - p->t_logs,
-                          p->t_end - p->t_idle,
+                          p->dt_comms,
+                          p->dt_compute,
+                          p->dt_play,
+                          p->dt_logs,
+                          p->dt_pause,
                           p->mrac_iters);
         }
         Serial.println();

@@ -139,9 +139,10 @@ void setup()
 
 void loop()
 {
+    static Clock mainloop_timing_clock;
+    static Clock actual_pulse_frequency_clock;
     static uint32_t loop_counter = 0;
     static float actual_pulse_frequency = 0;
-    static uint32_t last_loop_start_time = micros();
 
     // grab the new pulse parameters from serial comms
     bool dirty = tcode.update_from_serial();
@@ -162,25 +163,28 @@ void loop()
         return;
     }
 
+    Clock total_pulse_length_timer;
+
     MainLoopTraceLine *traceline = trace.next_main_loop_line();
-    traceline->t_start = micros();
+    mainloop_timing_clock.reset();
+    traceline->t_start = mainloop_timing_clock.last_update_time;
 
     // calculate stats
     loop_counter++;
-    uint32_t loop_start_time = micros();
-    actual_pulse_frequency = lerp(.05f, actual_pulse_frequency, 1 / (float(loop_start_time - last_loop_start_time) * 1e-6f));
-    last_loop_start_time = loop_start_time;
+    actual_pulse_frequency_clock.step();
+    actual_pulse_frequency = lerp(.05f, actual_pulse_frequency, 1e6f / actual_pulse_frequency_clock.dt_micros);
 
-    float pulse_alpha = axes.alpha.get_remap(loop_start_time);
-    float pulse_beta = axes.beta.get_remap(loop_start_time);
-    float pulse_amplitude = axes.volume.get_remap(loop_start_time); // pulse amplitude in amps
-    float pulse_carrier_frequency = axes.carrier_frequency.get_remap(loop_start_time);
-    float pulse_frequency = axes.pulse_frequency.get_remap(loop_start_time);
-    float pulse_width = axes.pulse_width.get_remap(loop_start_time);
+    uint32_t t0 = micros();
+    float pulse_alpha = axes.alpha.get_remap(t0);
+    float pulse_beta = axes.beta.get_remap(t0);
+    float pulse_amplitude = axes.volume.get_remap(t0); // pulse amplitude in amps
+    float pulse_carrier_frequency = axes.carrier_frequency.get_remap(t0);
+    float pulse_frequency = axes.pulse_frequency.get_remap(t0);
+    float pulse_width = axes.pulse_width.get_remap(t0);
 
-    float calibration_center = axes.calib_center.get_remap(loop_start_time);
-    float calibration_lr = axes.calib_lr.get_remap(loop_start_time);
-    float calibration_ud = axes.calib_ud.get_remap(loop_start_time);
+    float calibration_center = axes.calib_center.get_remap(t0);
+    float calibration_lr = axes.calib_lr.get_remap(t0);
+    float calibration_ud = axes.calib_ud.get_remap(t0);
 
     float pulse_active_duration = pulse_width / pulse_carrier_frequency;
     float pulse_pause_duration = max(0.f, 1 / pulse_frequency - pulse_active_duration);
@@ -192,8 +196,8 @@ void loop()
     emergencyStop.check_vbus();
 
     // pre-compute the new pulse
-    traceline->t_compute_start = micros();
-    Clock pause_timer{};
+    mainloop_timing_clock.step();
+    traceline->dt_comms = mainloop_timing_clock.dt_micros;
     pulse_threephase.create_pulse(
         pulse_amplitude,
         pulse_alpha,
@@ -203,7 +207,6 @@ void loop()
         calibration_center,
         calibration_ud,
         calibration_lr);
-    pause_timer.step();
 
     // reset stats
     mrac2.neutral_abs_sum = 0;
@@ -221,28 +224,30 @@ void loop()
     static float right_dc = 0;
 
     // play the pulse
-    traceline->t_pulse_play_start = micros();
-    Clock timer{};
+    mainloop_timing_clock.step();
+    traceline->dt_compute = mainloop_timing_clock.dt_micros;
+    Clock pulse_active_timer{};
     uint32_t iterations_per_pulse = 0;
-    while (timer.time_seconds < (pulse_active_duration + 200e-6f))
+    while (pulse_active_timer.time_seconds < (pulse_active_duration + 200e-6f))
     {
         traceline->mrac_iters++;
         iterations_per_pulse++;
-        timer.step();
+        pulse_active_timer.step();
         float desired_current_neutral = 0;
         float desired_current_change_neutral = 0;
         float desired_current_right = 0;
         float desired_current_change_right = 0;
-        pulse_threephase.get(timer.time_seconds,
+        pulse_threephase.get(pulse_active_timer.time_seconds,
                              &desired_current_neutral, &desired_current_right,
                              &desired_current_change_neutral, &desired_current_change_right);
         mrac2.iter(desired_current_neutral, desired_current_change_neutral,
                    desired_current_right, desired_current_change_right);
     }
-    timer.step();
+    pulse_active_timer.step();
 
     // update stats
-    traceline->t_logs = micros();
+    mainloop_timing_clock.step();
+    traceline->dt_play = mainloop_timing_clock.dt_micros;
     traceline->xhat_a1 = mrac2.xHat_a;
     traceline->xhat_b1 = mrac2.xHat_b;
     traceline->pia = mrac2.pid_a_i;
@@ -301,21 +306,24 @@ void loop()
         Serial.print("$");
         Serial.printf("V_BUS:%.2f ", read_vbus(&currentSense));
         Serial.printf("temp:%.1f ", read_temperature(&currentSense));
-        Serial.printf("F_mrac:%.0f ", iterations_per_pulse / timer.time_seconds);
+        Serial.printf("F_mrac:%.0f ", iterations_per_pulse / pulse_active_timer.time_seconds);
         Serial.printf("F_pulse:%.1f ", actual_pulse_frequency);
         Serial.println();
     }
 
-    traceline->t_idle = micros();
-    pause_timer.step();
+    mainloop_timing_clock.step();
+    traceline->dt_logs = mainloop_timing_clock.dt_micros;
+    total_pulse_length_timer.step();
     // stall out the pulse pause.
-    while (pause_timer.time_seconds < pulse_total_duration)
+    while (total_pulse_length_timer.time_seconds < pulse_total_duration)
     {
-        pause_timer.step();
+        total_pulse_length_timer.step();
         mrac2.iter(0, 0, 0, 0);
         emergencyStop.check_current_limits();
     }
-    traceline->t_end = micros();
+    total_pulse_length_timer.reset();
+    mainloop_timing_clock.step();
+    traceline->dt_pause = mainloop_timing_clock.dt_micros;
     traceline->xhat_a2 = mrac2.xHat_a;
     traceline->xhat_b2 = mrac2.xHat_b;
     mrac2.prepare_for_idle();
