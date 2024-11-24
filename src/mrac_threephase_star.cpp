@@ -43,14 +43,16 @@ void MRACThreephaseStar::iter(
     float r_b = R0 * desired_current_left + L0 * desired_rate_of_current_change_left;
 
     // real hardware control signal = u = -Kx * xHat + Kr * r
-    float u_a = -Kx11 * xHat_a + -Kx12 * xHat_b + Kr * r_a;
-    float u_b = -Kx21 * xHat_a + -Kx22 * xHat_b + Kr * r_b;
+    float u_ad = (+2 * Ka * xHat_a) - (1 * Kb * xHat_b) + (Kc * xHat_a + Kc * xHat_b);
+    float u_bd = (-1 * Ka * xHat_a) + (2 * Kb * xHat_b) + (Kc * xHat_a + Kc * xHat_b);
+    float u_a = Kr * r_a - u_ad;
+    float u_b = Kr * r_b - u_bd;
     // HACK HACK HACK
-    if (desired_current_neutral == 0 && desired_current_left == 0)
-    {
-        u_a = Kr * r_a;
-        u_b = Kr * r_b;
-    }
+    // if (desired_current_neutral == 0 && desired_current_left == 0)
+    // {
+    //     u_a = Kr * r_a;
+    //     u_b = Kr * r_b;
+    // }
     float u_c = -(u_a + u_b);
 
     float u_high = max(u_a, max(u_b, u_c));
@@ -104,33 +106,31 @@ void MRACThreephaseStar::iter(
     float error_b = x_b - state_lag1.xHat_b;
     if ((dt < 100e-6f) && ((abs(desired_current_neutral) > .01f) || (abs(desired_current_left) > 0.01f)))
     {
-        const float speed = 2.f;
-        const float gamma1 = -.1f * speed * P * B * dt;
-        const float gamma2 = .1f * speed * P * B * dt;
+        const float speed = 5.f;
+        const float gamma1 = -.1f * (speed * P * B * dt);
+        const float gamma2 = .1f * (speed * P * B * dt);
 
-        // do kx += dt * gamma * x * err^T * P * B;
-        Kx11 += gamma1 * (state_lag1.xHat_a * error_a);
-        Kx12 += gamma1 * (state_lag1.xHat_a * error_b);
-        Kx21 += gamma1 * (state_lag1.xHat_b * error_a);
-        Kx22 += gamma1 * (state_lag1.xHat_b * error_b);
+        // do Kx += dt * gamma * x * err^T * P * B;
+        // code below does not follow the textbook equation, but seems to work best....
+        // the if prevents paramter drift if the system is not persistently exciting enough in any particular direction.
+        if (abs(error_a) > .08f)
+            Ka += gamma1 * (state_lag1.xHat_a * error_a);
+        if (abs(error_b) > .08f)
+            Kb += gamma1 * (state_lag1.xHat_b * error_b);
+        if (abs(error_a + error_b) > .08f)
+            Kc += gamma1 * ((state_lag1.xHat_a + state_lag1.xHat_b) * (error_a + error_b)); // = xHat_c * error_c
 
         // do kr += dt * gamma * r * err^T * P * B;
         Kr += gamma2 * (state_lag1.r_a * error_a);
         Kr += gamma2 * (state_lag1.r_b * error_b);
-
-        // constrain r3 = r3_alt
-        float err = ((Kx22 + 2 * Kx12) - (Kx11 + 2 * Kx21)) / 6;
-        Kx11 += 1.0f * err;
-        Kx12 -= 2.0f * err;
-        Kx21 += 2.0f * err;
-        Kx22 -= 1.0f * err;
+        Kr += gamma2 * (state_lag1.r_a + state_lag1.r_b) * (error_a + error_b); // = r_c * error_c
 
         Kr = _constrain(Kr, L_min / L0, L_max / L0);
-        // TODO: needs fix.
-        Kx11 = _constrain(Kx11, R0 * Kr - R_max, R0 * Kr - R_min);                           // constrain R1 between R_min and R_max
-        Kx22 = _constrain(Kx22, R0 * Kr - R_max, R0 * Kr - R_min);                           // constrain R2
-        Kx12 = _constrain(Kx12, (R0 * Kr - Kx22 - R_max) / 2, (R0 * Kr - Kx22 - R_min) / 2); // constrain R3
-        Kx21 = _constrain(Kx21, (R0 * Kr - Kx11 - R_max) / 2, (R0 * Kr - Kx11 - R_min) / 2); // constrain R3
+        const float minimum = (R0 * Kr - R_max) / 3;
+        const float maximum = (R0 * Kr - R_min) / 3;
+        Ka = _constrain(Ka, minimum, maximum);
+        Kb = _constrain(Kb, minimum, maximum);
+        Kc = _constrain(Kc, minimum, maximum);
     }
 
     // system state update, fast convergance to true system state.
@@ -181,26 +181,17 @@ float MRACThreephaseStar::estimate_inductance()
 
 float MRACThreephaseStar::estimate_r1()
 { // neutral
-    return Kr * R0 - Kx11 + Kx21;
+    return (R0 * Kr - 3 * Ka);
 }
 
 float MRACThreephaseStar::estimate_r2()
 { // left
-    return Kr * R0 - Kx22 + Kx12;
+    return (R0 * Kr - 3 * Kb);
 }
 
 float MRACThreephaseStar::estimate_r3()
 { // right
-    // these two are equivalent provided the model matches
-    return Kr * R0 - Kx11 - 2 * Kx21;
-    // return Kr * R0 - Kx22 - 2 * Kx12;
-}
-
-float MRACThreephaseStar::estimate_r3_alt()
-{
-    // these two are equivalent provided the model matches
-    // return Kr * R0 - Kx11 - 2 * Kx21;
-    return Kr * R0 - Kx22 - 2 * Kx12;
+    return (R0 * Kr - 3 * Kc);
 }
 
 void MRACThreephaseStar::print_debug_stats()
@@ -210,8 +201,9 @@ void MRACThreephaseStar::print_debug_stats()
         Serial.printf("R0 =  %f\r\n", R0);
         Serial.printf("L0 =  %f\r\n", L0);
         Serial.printf("Kr =  %f\r\n", Kr);
-        Serial.printf("Kx = [%f  %f]\r\n", Kx11, Kx12);
-        Serial.printf("     [%f  %f]\r\n", Kx21, Kx22);
+        Serial.printf("Ka =  %f\r\n", Ka);
+        Serial.printf("Kb =  %f\r\n", Kb);
+        Serial.printf("Kc =  %f\r\n", Kc);
         Serial.printf("R1 =  %f\r\n", estimate_r1());
         Serial.printf("R2 =  %f\r\n", estimate_r2());
         Serial.printf("R3 =  %f\r\n", estimate_r3());

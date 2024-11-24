@@ -45,16 +45,33 @@ Substitude C = -(A + B) and Ic = -(Ia + Ib) and Icd = -(Iad + Ibd) then solve:
     pprint(solution[Iad])
     pprint(solution[Ibd])
 
-          /------------ matrix A ----------\     /- matrix B -\    /-- input voltage --\
-[[Iad]  = 1/(3*L) * [[-2Ra - Rc,    Rb - Rc]   + 1/L [[1,    0]  * [[A]
- [Ibd]]              [  Ra - Rc,  -2Rb - Rc]]         [0,    1]]    [B]]
+          /------------ matrix A ----------\             /- matrix B -\
+[[Iad]  = 1/(3*L) * [[-2Ra - Rc,    Rb - Rc]  * [[Ia]  + 1/L [[1,    0]  * [[Va]
+ [Ibd]]              [  Ra - Rc,  -2Rb - Rc]]    [Ib]]        [0,    1]]    [Vb]]
 
-Model matching conditions:
-Bm = B * Kr           Kr a scalar
-Am = A - B * Kx       Kx a 2x2 matrix
+Reference model:
+xd = Am * x + Bm * r
 
 Control law:
-u = -Kx * x + Kr * r
+u = Kr * r - Kx * x
+
+plant model:
+xd = A * x + B * u
+xd = A * x + B * [Kr * r - Kx * x]
+
+Model matching conditions:
+Bm = B * Kr                 Kr a scalar
+Am = A - B * Kx             Kx a 2x2 matrix
+
+After solving model matching condition 1 we find:
+L = L0 * Kr
+
+We choose Kx = Ka * [2  0] + Kb * [0 -1] + Kc * [1  1]
+                    [-1 0]        [0  2]        [1  1]
+After solving model matching condition 2 we find:
+R0 * Kr - 3 * Ka = Ra
+R0 * Kr - 3 * Kb = Rb
+R0 * Kr - 3 * Kc = Rc
 */
 class MRACThreephaseStar
 {
@@ -92,7 +109,6 @@ public:
     float estimate_r1();     // neutral
     float estimate_r2();     // left
     float estimate_r3();     // right
-    float estimate_r3_alt(); // right
 
     void print_debug_stats();
 
@@ -111,10 +127,9 @@ public:
 
     // MRAC variables.
     float Kr = 1;                 // feedforward gain, true inductance = L = L0 * Kr
-    float Kx11 = 0;               // = 1/3 * (3*Kr * R0 - 2*Ra - Rc)
-    float Kx12 = 0;               // = 1/3 * (Rb - Rc)
-    float Kx21 = 0;               // = 1/3 * (Ra - Rc)
-    float Kx22 = 0;               // = 1/3 * (3*Kr * R0 - 2*Rb - Rc)
+    float Ka = 0;                 // R0 * Kr - 3 * Ka = Ra
+    float Kb = 0;                 // R0 * Kr - 3 * Kb = Rb
+    float Kc = 0;                 // R0 * Kr - 3 * Kc = Rc
     float xHat_a = 0, xHat_b = 0; // estimated system current
 
     struct state_history_t
