@@ -83,8 +83,8 @@ public:
     static constexpr float R_min = MODEL_RESISTANCE_MIN;
     static constexpr float R_max = MODEL_RESISTANCE_MAX;
 
-    static constexpr float PID_Kp = 1.0f / L0;
-    static constexpr float PID_Ki = .1f / L0;
+    static constexpr float PID_Kp = 1.0f;
+    static constexpr float PID_Ki = .1f;
 
     static constexpr float A = -R0 / L0;
     static constexpr float B = 1 / L0;

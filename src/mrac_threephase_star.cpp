@@ -34,13 +34,13 @@ void MRACThreephaseStar::iter(
     pid_a_i += pid_error_a * PID_Ki;
     pid_b_i += pid_error_b * PID_Ki;
 
-    // PID control
-    desired_rate_of_current_change_neutral -= pid_a_p + pid_a_i;
-    desired_rate_of_current_change_left -= pid_b_p + pid_b_i;
-
     // reference model control signal = r, calculate from xdot = Am * x + Bm * r
     float r_a = R0 * desired_current_neutral + L0 * desired_rate_of_current_change_neutral;
     float r_b = R0 * desired_current_left + L0 * desired_rate_of_current_change_left;
+
+    // PID control
+    r_a -= pid_a_p + pid_a_i;
+    r_b -= pid_b_p + pid_b_i;
 
     // real hardware control signal = u = -Kx * xHat + Kr * r
     float u_ad = (+2 * Ka * xHat_a) - (1 * Kb * xHat_b) + (Kc * xHat_a + Kc * xHat_b);
