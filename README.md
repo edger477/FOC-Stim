@@ -18,6 +18,10 @@ BOM:
 * 3x inductor (100-470µH 1A, exact specs TBD)
 * 3x ceramic caps (1-10µF 50v, exact specs TBD)
 
+A panel-mount USB micro-B is useful if you want to make this into a nice box.
+[USB Micro-B](https://www.sparkfun.com/products/15464)
+or [USB B](https://www.sparkfun.com/products/15463).
+
 How to wire:
 
 TODO
