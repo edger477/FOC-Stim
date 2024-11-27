@@ -29,7 +29,7 @@ static Clock keepalive_clock{};
 
 void tcode_D0() {
     Serial.println();
-    Serial.printf("FOC-Stim 0.1\r\n");
+    Serial.printf("FOC-Stim 0.2\r\n");
 }
 
 void tcode_DSTART() {
