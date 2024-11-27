@@ -84,7 +84,7 @@ void ThreephasePulse::create_pulse(
     float ab11 = 1;
     float ab12 = 0;
     float ab21 = -0.5f;
-    float ab22 = _SQRT3_2; // selects the left electrode
+    float ab22 = -_SQRT3_2; // selects the left electrode
 
     // ab * (calibration * projection)
     float c11 = ab11 * b11 + ab12 * b21;

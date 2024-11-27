@@ -241,13 +241,13 @@ void loop()
         pulse_active_timer.step();
         float desired_current_neutral = 0;
         float desired_current_change_neutral = 0;
-        float desired_current_right = 0;
-        float desired_current_change_right = 0;
+        float desired_current_left = 0;
+        float desired_current_change_left = 0;
         pulse_threephase.get(pulse_active_timer.time_seconds,
-                             &desired_current_neutral, &desired_current_right,
-                             &desired_current_change_neutral, &desired_current_change_right);
+                             &desired_current_neutral, &desired_current_left,
+                             &desired_current_change_neutral, &desired_current_change_left);
         mrac2.iter(desired_current_neutral, desired_current_change_neutral,
-                   desired_current_right, desired_current_change_right);
+                   desired_current_left, desired_current_change_left);
     }
     pulse_active_timer.step();
 
