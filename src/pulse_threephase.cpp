@@ -53,7 +53,6 @@ void ThreephasePulse::create_pulse(
     float center_calibration, float up_down_calibration, float left_right_calibration)
 {
     // TODO: random polarity?
-    // TODO: modern pulse shape
 
     float r = sqrtf(alpha * alpha + beta * beta);
     if (r > 1)

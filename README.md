@@ -41,4 +41,4 @@ Control over serial with Restim.
 
 View live stats with teleplot.
 
-All restim features are supported except: pulse rise time, pulse interval random, vibration, transform.
+All restim features are supported except: vibration.
