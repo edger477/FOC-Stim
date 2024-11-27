@@ -24,20 +24,20 @@ void EmergencyStop::check_current_limits()
     float a = currents.a - mid;
     float b = currents.b - mid;
     float c = currents.c - mid;
-    check_current_limits(a, b, c);
+    check_current_limits(b, c, a);
 }
 
-void EmergencyStop::check_current_limits(float a, float b, float c)
+void EmergencyStop::check_current_limits(float neutral, float left, float right)
 {
-    max_recorded_current_a = abs(max_recorded_current_a) > abs(a) ? max_recorded_current_a : a;
-    max_recorded_current_b = abs(max_recorded_current_b) > abs(b) ? max_recorded_current_b : b;
-    max_recorded_current_c = abs(max_recorded_current_c) > abs(c) ? max_recorded_current_c : c;
-    if (max({abs(a), abs(b), abs(c)}) > ESTOP_CURRENT_LIMIT)
+    max_recorded_current_neutral = abs(max_recorded_current_neutral) > abs(neutral) ? max_recorded_current_neutral : neutral;
+    max_recorded_current_left = abs(max_recorded_current_left) > abs(left) ? max_recorded_current_left : left;
+    max_recorded_current_right = abs(max_recorded_current_right) > abs(right) ? max_recorded_current_right : right;
+    if (max({abs(neutral), abs(left), abs(right)}) > ESTOP_CURRENT_LIMIT)
     {
         trigger_emergency_stop();
         while (1)
         {
-            Serial.printf("current limit exceeded: %f %f %f. Restart device to proceed\r\n", a, b, c);
+            Serial.printf("current limit exceeded: %f %f %f. Restart device to proceed\r\n", neutral, left, right);
             delay(5000);
         }
     }

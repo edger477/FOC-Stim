@@ -256,8 +256,8 @@ void loop()
     traceline->dt_play = mainloop_timing_clock.dt_micros;
     traceline->xhat_a1 = mrac2.xHat_a;
     traceline->xhat_b1 = mrac2.xHat_b;
-    traceline->pia = mrac2.pid_a_i;
-    traceline->pib = mrac2.pid_b_i;
+    traceline->pi_neutral = mrac2.pid_a_i;
+    traceline->pi_left = mrac2.pid_b_i;
     mrac2.prepare_for_idle();
 
     // update stats
@@ -272,9 +272,9 @@ void loop()
     if ((loop_counter + 0) % 10 == 0)
     {
         Serial.print("$");
-        Serial.printf("R_neutral:%.2f ", mrac2.estimate_r1());
-        Serial.printf("R_left:%.2f ", mrac2.estimate_r2());
-        Serial.printf("R_right:%.2f ", mrac2.estimate_r3());
+        Serial.printf("R_neutral:%.2f ", mrac2.estimate_resistance_neutral());
+        Serial.printf("R_left:%.2f ", mrac2.estimate_resistance_left());
+        Serial.printf("R_right:%.2f ", mrac2.estimate_resistance_right());
         Serial.println();
     }
     if ((loop_counter + 2) % 10 == 0)
@@ -282,13 +282,13 @@ void loop()
         Serial.print("$");
         Serial.printf("L:%.2f ", mrac2.estimate_inductance() * 1e6f);
         Serial.printf("V_drive:%.2f ", mrac2.v_drive_max);
-        Serial.printf("I_max_a:%f ", abs(emergencyStop.max_recorded_current_a));
-        Serial.printf("I_max_b:%f ", abs(emergencyStop.max_recorded_current_b));
-        Serial.printf("I_max_c:%f ", abs(emergencyStop.max_recorded_current_c));
+        Serial.printf("I_max_a:%f ", abs(emergencyStop.max_recorded_current_neutral));
+        Serial.printf("I_max_b:%f ", abs(emergencyStop.max_recorded_current_left));
+        Serial.printf("I_max_c:%f ", abs(emergencyStop.max_recorded_current_right));
         Serial.println();
-        emergencyStop.max_recorded_current_a = 0;
-        emergencyStop.max_recorded_current_b = 0;
-        emergencyStop.max_recorded_current_c = 0;
+        emergencyStop.max_recorded_current_neutral = 0;
+        emergencyStop.max_recorded_current_left = 0;
+        emergencyStop.max_recorded_current_right = 0;
 
     }
     if ((loop_counter + 4) % 10 == 0)
@@ -335,11 +335,11 @@ void loop()
     mrac2.prepare_for_idle();
     traceline->v_drive_max = mrac2.v_drive_max;
     mrac2.v_drive_max = 0;
-    traceline->max_recorded_current_a = emergencyStop.max_recorded_current_a;
-    traceline->max_recorded_current_b = emergencyStop.max_recorded_current_b;
-    traceline->max_recorded_current_c = emergencyStop.max_recorded_current_c;
-    traceline->Ra = mrac2.estimate_r1();
-    traceline->Rb = mrac2.estimate_r2();
-    traceline->Rc = mrac2.estimate_r3();
+    traceline->max_recorded_current_neutral = emergencyStop.max_recorded_current_neutral;
+    traceline->max_recorded_current_left = emergencyStop.max_recorded_current_left;
+    traceline->max_recorded_current_right = emergencyStop.max_recorded_current_right;
+    traceline->R_neutral = mrac2.estimate_resistance_neutral();
+    traceline->R_left = mrac2.estimate_resistance_left();
+    traceline->R_right = mrac2.estimate_resistance_right();
     traceline->L = mrac2.estimate_inductance();
 }

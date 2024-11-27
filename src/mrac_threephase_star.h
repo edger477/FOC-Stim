@@ -106,9 +106,9 @@ public:
     void prepare_for_idle();
 
     float estimate_inductance();
-    float estimate_r1();     // neutral
-    float estimate_r2();     // left
-    float estimate_r3();     // right
+    float estimate_resistance_neutral();
+    float estimate_resistance_left();
+    float estimate_resistance_right();
 
     void print_debug_stats();
 

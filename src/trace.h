@@ -20,11 +20,11 @@ struct MainLoopTraceLine
     float xhat_a2;
     float xhat_b2;
     float v_drive_max;
-    float max_recorded_current_a;
-    float max_recorded_current_b;
-    float max_recorded_current_c;
+    float max_recorded_current_neutral;
+    float max_recorded_current_left;
+    float max_recorded_current_right;
     float amplitude;
-    float Ra, Rb, Rc, L, pia, pib;
+    float R_neutral, R_left, R_right, L, pi_neutral, pi_left;
 };
 
 class Trace
@@ -60,7 +60,7 @@ public:
         }
         Serial.println();
         Serial.printf("mainloop signals:\r\n");
-        Serial.printf("   xHat_a1|   xHat_b1|   xHat_a2|   xHat_b2|   v_drive|   max I_a|   max I_b|   max I_c| amplitude|\r\n");
+        Serial.printf("   xHat_a1|   xHat_b1|   xHat_a2|   xHat_b2|   v_drive|   max I_N|   max I_L|   max I_R| amplitude|\r\n");
         for (int i = 0; i < MAINLOOP_NUM_ENTRIES; i++)
         {
             MainLoopTraceLine *p = &main_loop_trace[(i + main_loop_trace_index) % MAINLOOP_NUM_ENTRIES];
@@ -70,24 +70,24 @@ public:
                           p->xhat_a2,
                           p->xhat_b2,
                           p->v_drive_max,
-                          p->max_recorded_current_a,
-                          p->max_recorded_current_b,
-                          p->max_recorded_current_c,
+                          p->max_recorded_current_neutral,
+                          p->max_recorded_current_left,
+                          p->max_recorded_current_right,
                           p->amplitude);
         }
         Serial.println();
         Serial.printf("mainloop MRAC:\r\n");
-        Serial.printf("        Ra|        Rb|        Rc|         L|      pi_a|      pi_b|\r\n");
+        Serial.printf(" R_neutral|    R_left|   R_right|         L|pi_neutral|   pi_left|\r\n");
         for (int i = 0; i < MAINLOOP_NUM_ENTRIES; i++)
         {
             MainLoopTraceLine *p = &main_loop_trace[(i + main_loop_trace_index) % MAINLOOP_NUM_ENTRIES];
             Serial.printf("%10f %10f %10f %10f %10f %10f\r\n",
-                          p->Ra,
-                          p->Rb,
-                          p->Rc,
+                          p->R_neutral,
+                          p->R_left,
+                          p->R_right,
                           p->L,
-                          p->pia,
-                          p->pib);
+                          p->pi_neutral,
+                          p->pi_left);
         }
         Serial.println();
     }

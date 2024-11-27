@@ -179,18 +179,18 @@ float MRACThreephaseStar::estimate_inductance()
     return L0 * Kr;
 }
 
-float MRACThreephaseStar::estimate_r1()
-{ // neutral
+float MRACThreephaseStar::estimate_resistance_neutral()
+{
     return (R0 * Kr - 3 * Ka);
 }
 
-float MRACThreephaseStar::estimate_r2()
-{ // left
+float MRACThreephaseStar::estimate_resistance_left()
+{
     return (R0 * Kr - 3 * Kb);
 }
 
-float MRACThreephaseStar::estimate_r3()
-{ // right
+float MRACThreephaseStar::estimate_resistance_right()
+{
     return (R0 * Kr - 3 * Kc);
 }
 
@@ -204,9 +204,9 @@ void MRACThreephaseStar::print_debug_stats()
         Serial.printf("Ka =  %f\r\n", Ka);
         Serial.printf("Kb =  %f\r\n", Kb);
         Serial.printf("Kc =  %f\r\n", Kc);
-        Serial.printf("R1 =  %f\r\n", estimate_r1());
-        Serial.printf("R2 =  %f\r\n", estimate_r2());
-        Serial.printf("R3 =  %f\r\n", estimate_r3());
+        Serial.printf("Ra =  %f\r\n", estimate_resistance_neutral());
+        Serial.printf("Rb =  %f\r\n", estimate_resistance_left());
+        Serial.printf("Rc =  %f\r\n", estimate_resistance_right());
         Serial.printf("L  =  %f\r\n", estimate_inductance());
         Serial.printf("Pia= %f %f\r\n", pid_a_p, pid_a_i);
         Serial.printf("Pib= %f %f\r\n", pid_b_p, pid_b_i);
