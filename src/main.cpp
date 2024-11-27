@@ -59,6 +59,7 @@ struct
     TCodeAxis pulse_frequency{"A1", 50, 1, 100};
     TCodeAxis pulse_width{"A2", 6, 3, 20};
     TCodeAxis pulse_rise{"A3", 5, 2, 10};
+    TCodeAxis pulse_interval_random{"A4", 0, 0, 1};
     TCodeAxis calib_center{"C0", 0, -10, 10};
     TCodeAxis calib_ud{"C1", 0, -10, 10};
     TCodeAxis calib_lr{"C2", 0, -10, 10};
@@ -183,6 +184,7 @@ void loop()
     float pulse_frequency = axes.pulse_frequency.get_remap(t0);
     float pulse_width = axes.pulse_width.get_remap(t0);
     float pulse_rise = axes.pulse_rise.get_remap(t0);
+    float pulse_interval_random = axes.pulse_interval_random.get_remap(t0);
 
     float calibration_center = axes.calib_center.get_remap(t0);
     float calibration_lr = axes.calib_lr.get_remap(t0);
@@ -190,6 +192,7 @@ void loop()
 
     float pulse_active_duration = pulse_width / pulse_carrier_frequency;
     float pulse_pause_duration = max(0.f, 1 / pulse_frequency - pulse_active_duration);
+    pulse_pause_duration *= float_rand(1 - pulse_interval_random, 1 + pulse_interval_random);
     float pulse_total_duration = pulse_active_duration + pulse_pause_duration;
 
     traceline->pulse_active_duration = pulse_active_duration;
