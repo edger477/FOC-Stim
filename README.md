@@ -24,7 +24,9 @@ or [USB B](https://www.sparkfun.com/products/15463).
 
 How to wire:
 
-TODO
+![](docs/images/schematic.png)
+
+`U`, `V`, `W` are the 3 outputs on the board, with `U` being the one closest to the potentiometer.
 
 # Software setup
 
