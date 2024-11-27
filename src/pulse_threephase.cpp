@@ -46,7 +46,11 @@ static void get_calibration_coefs(
     }
 }
 
-void ThreephasePulse::create_pulse(float current_amplitude, float alpha, float beta, float carrier_frequency, float pulse_width, float center_calibration, float up_down_calibration, float left_right_calibration)
+void ThreephasePulse::create_pulse(
+    float current_amplitude,
+    float alpha, float beta, float carrier_frequency,
+    float pulse_width, float pulse_rise,
+    float center_calibration, float up_down_calibration, float left_right_calibration)
 {
     // TODO: random polarity?
     // TODO: modern pulse shape
@@ -123,6 +127,11 @@ void ThreephasePulse::create_pulse(float current_amplitude, float alpha, float b
 #endif
 
     pulse_duration = 1.f / carrier_frequency * pulse_width; // seconds
+    pulse_rise = max(pulse_rise, 2.f);
+    pulse_rise = min(pulse_rise, pulse_width / 2);
+    float rise_end = pulse_duration * (pulse_rise / pulse_width);
+    float fall_start = pulse_duration - rise_end;
+
     for (int i = 0; i < THREEPHASE_PULSE_BUFFER_SIZE; i++)
     {
         float t = (i * pulse_duration) / float(THREEPHASE_PULSE_BUFFER_SIZE);
@@ -142,37 +151,29 @@ void ThreephasePulse::create_pulse(float current_amplitude, float alpha, float b
         float ld = c11 * cosd + c12 * sind;
         float rd = c21 * cosd + c22 * sind;
 
-        _sincos(t * (carrier_frequency / pulse_width) * _2PI, &sin, &cos);
-        float pulse_current = -cos * 0.5f + 0.5f;
-        float pulse_current_d = sin * 0.5f * (carrier_frequency / pulse_width) * _2PI;
+        float pulse_envelope, pulse_envelope_d;
+        if (t <= rise_end) {    // rising
+            // env = sin(t * carrier_frequency / pulse_rise * pi / 2)
+            _sincos(t * (carrier_frequency / pulse_rise) * _PI_2, &sin, &cos);
+            pulse_envelope = sin;
+            pulse_envelope_d = cos * (carrier_frequency / pulse_rise) * _PI_2;
+        } else if (t <= fall_start) {   // steady
+            // env = 1
+            pulse_envelope = 1;
+            pulse_envelope_d = 0;
+        } else {    // falling
+            // env = sin((t - fall_start + rise_end) * carrier_frequency / pulse_rise * pi / 2)
+            _sincos((t - fall_start + rise_end) * (carrier_frequency / pulse_rise) * _PI_2, &sin, &cos);
+            pulse_envelope = sin;
+            pulse_envelope_d = cos * (carrier_frequency / pulse_rise) * _PI_2;
+        }
 
-        this->a[i] = current_amplitude * (l * pulse_current);
-        this->b[i] = current_amplitude * (r * pulse_current);
-        this->ad[i] = current_amplitude * (l * pulse_current_d + ld * pulse_current);
-        this->bd[i] = current_amplitude * (r * pulse_current_d + rd * pulse_current);
+        this->a[i] = current_amplitude * (l * pulse_envelope);
+        this->b[i] = current_amplitude * (r * pulse_envelope);
+        this->ad[i] = current_amplitude * (l * pulse_envelope_d + ld * pulse_envelope);
+        this->bd[i] = current_amplitude * (r * pulse_envelope_d + rd * pulse_envelope);
     }
 }
-
-// void ThreephasePulse::get(float t, float *a_out, float *b_out, float *ad_out, float *bd_out)
-// {
-//     float integral, remainder;
-//     remainder = modff((t / pulse_duration) * THREEPHASE_PULSE_BUFFER_SIZE, &integral);
-//     uint32_t i = integral;
-//     if ((i + 1) >= THREEPHASE_PULSE_BUFFER_SIZE || t < 0)
-//     {
-//         *a_out = 0;
-//         *b_out = 0;
-//         *ad_out = 0;
-//         *bd_out = 0;
-//     }
-//     else
-//     {
-//         *a_out = lerp(remainder, a[i], a[i + 1]);
-//         *b_out = lerp(remainder, b[i], b[i + 1]);
-//         *ad_out = lerp(remainder, ad[i], ad[i + 1]);
-//         *bd_out = lerp(remainder, bd[i], bd[i + 1]);
-//     }
-// }
 
 void ThreephasePulse::print()
 {

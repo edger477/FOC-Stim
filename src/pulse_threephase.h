@@ -18,6 +18,7 @@ public:
         float beta,
         float carrier_frequency,
         float pulse_width,
+        float pulse_rise,
         float center_calibration,
         float up_down_calibration,
         float left_right_calibration);

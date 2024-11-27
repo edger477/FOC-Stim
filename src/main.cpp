@@ -58,6 +58,7 @@ struct
     TCodeAxis carrier_frequency{"A0", 800, 500, 1000};
     TCodeAxis pulse_frequency{"A1", 50, 1, 100};
     TCodeAxis pulse_width{"A2", 6, 3, 20};
+    TCodeAxis pulse_rise{"A3", 5, 2, 10};
     TCodeAxis calib_center{"C0", 0, -10, 10};
     TCodeAxis calib_ud{"C1", 0, -10, 10};
     TCodeAxis calib_lr{"C2", 0, -10, 10};
@@ -181,6 +182,7 @@ void loop()
     float pulse_carrier_frequency = axes.carrier_frequency.get_remap(t0);
     float pulse_frequency = axes.pulse_frequency.get_remap(t0);
     float pulse_width = axes.pulse_width.get_remap(t0);
+    float pulse_rise = axes.pulse_rise.get_remap(t0);
 
     float calibration_center = axes.calib_center.get_remap(t0);
     float calibration_lr = axes.calib_lr.get_remap(t0);
@@ -204,6 +206,7 @@ void loop()
         pulse_beta,
         pulse_carrier_frequency,
         pulse_width,
+        pulse_rise,
         calibration_center,
         calibration_ud,
         calibration_lr);
