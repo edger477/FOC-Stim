@@ -29,8 +29,8 @@ void MRACThreephaseStar::iter(
     // PID update
     float pid_error_a = xHat_a - desired_current_neutral;
     float pid_error_b = xHat_b - desired_current_left;
-    pid_a_p = lerp(0.5f, pid_a_p, pid_error_a * PID_Kp);
-    pid_b_p = lerp(0.5f, pid_b_p, pid_error_b * PID_Kp);
+    pid_a_p += 0.5f * (pid_error_a * PID_Kp - pid_a_p);
+    pid_b_p += 0.5f * (pid_error_b * PID_Kp - pid_b_p);
     pid_a_i += pid_error_a * PID_Ki;
     pid_b_i += pid_error_b * PID_Ki;
 
