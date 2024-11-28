@@ -16,7 +16,7 @@ static void get_calibration_coefs(
     // generate_transform_in_ab()
     float theta = atan2f(left_right, up_down) / 2;
     float r = norm(up_down, left_right);
-    float a = sinf(-theta);
+    float a = sinf(theta);
     float b = cosf(theta);
     float scale = 1.f / powf(10, (r / 10));
     ;
