@@ -36,8 +36,8 @@ public:
         }
         else
         {
-            *a_out = lerp(remainder, a[i], a[i + 1]);
-            *b_out = lerp(remainder, b[i], b[i + 1]);
+            *a_out = a[i] + remainder * (a[i + 1] - a[i]);
+            *b_out = b[i] + remainder * (b[i + 1] - b[i]);
         }
     }
 
