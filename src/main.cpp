@@ -15,7 +15,7 @@ BLDCDriver6PWM driver = BLDCDriver6PWM(A_PHASE_UH, A_PHASE_UL, A_PHASE_VH, A_PHA
 // Gain calculation shown at https://community.simplefoc.com/t/b-g431b-esc1-current-control/521/21
 LowsideCurrentSense currentSense = LowsideCurrentSense(0.003f, -64.0f / 7.0f, A_OP1_OUT, A_OP2_OUT, A_OP3_OUT);
 
-MRACThreephaseStar mrac2{};
+MRACThreephaseStar mrac{};
 ThreephasePulse pulse_threephase{};
 Trace trace{};
 
@@ -73,7 +73,7 @@ TCode tcode(reinterpret_cast<TCodeAxis *>(&axes), sizeof(axes) / sizeof(TCodeAxi
 
 void estop_triggered()
 {
-    mrac2.print_debug_stats();
+    mrac.print_debug_stats();
     trace.print_mainloop_trace();
 }
 
@@ -110,7 +110,7 @@ void setup()
 
     Serial.printf("- init mrac\r\n");
     // mrac.init(&driver, &currentSense);
-    mrac2.init(&driver, &currentSense, &emergencyStop);
+    mrac.init(&driver, &currentSense, &emergencyStop);
 
     Clock vbus_clock;
     while (1)
@@ -213,12 +213,12 @@ void loop()
         calibration_lr);
 
     // reset stats
-    mrac2.neutral_abs_sum = 0;
-    mrac2.left_abs_sum = 0;
-    mrac2.right_abs_sum = 0;
-    mrac2.neutral_sum = 0;
-    mrac2.left_sum = 0;
-    mrac2.right_sum = 0;
+    mrac.neutral_abs_sum = 0;
+    mrac.left_abs_sum = 0;
+    mrac.right_abs_sum = 0;
+    mrac.neutral_sum = 0;
+    mrac.left_sum = 0;
+    mrac.right_sum = 0;
 
     static float neutral_abs_sum = 0;
     static float left_abs_sum = 0;
@@ -241,39 +241,39 @@ void loop()
         float desired_current_left = 0;
         pulse_threephase.get(pulse_active_timer.time_seconds,
                              &desired_current_neutral, &desired_current_left);
-        mrac2.iter(desired_current_neutral, desired_current_left);
+        mrac.iter(desired_current_neutral, desired_current_left);
     }
     pulse_active_timer.step();
 
     // update stats
     mainloop_timing_clock.step();
     traceline->dt_play = mainloop_timing_clock.dt_micros;
-    traceline->xhat_a1 = mrac2.xHat_a;
-    traceline->xhat_b1 = mrac2.xHat_b;
-    mrac2.prepare_for_idle();
+    traceline->xhat_a1 = mrac.xHat_a;
+    traceline->xhat_b1 = mrac.xHat_b;
+    mrac.prepare_for_idle();
 
     // update stats
-    neutral_abs_sum = lerp(0.1f, neutral_abs_sum, mrac2.neutral_abs_sum);
-    left_abs_sum = lerp(0.1f, left_abs_sum, mrac2.left_abs_sum);
-    right_abs_sum = lerp(0.1f, right_abs_sum, mrac2.right_abs_sum);
-    neutral_dc = lerp(0.1f, neutral_dc, mrac2.neutral_sum / iterations_per_pulse);
-    left_dc = lerp(0.1f, left_dc, mrac2.left_sum / iterations_per_pulse);
-    right_dc = lerp(0.1f, right_dc, mrac2.right_sum / iterations_per_pulse);
+    neutral_abs_sum = lerp(0.1f, neutral_abs_sum, mrac.neutral_abs_sum);
+    left_abs_sum = lerp(0.1f, left_abs_sum, mrac.left_abs_sum);
+    right_abs_sum = lerp(0.1f, right_abs_sum, mrac.right_abs_sum);
+    neutral_dc = lerp(0.1f, neutral_dc, mrac.neutral_sum / iterations_per_pulse);
+    left_dc = lerp(0.1f, left_dc, mrac.left_sum / iterations_per_pulse);
+    right_dc = lerp(0.1f, right_dc, mrac.right_sum / iterations_per_pulse);
 
     // occasionally print some stats..
     if ((loop_counter + 0) % 10 == 0)
     {
         Serial.print("$");
-        Serial.printf("R_neutral:%.2f ", mrac2.estimate_resistance_neutral());
-        Serial.printf("R_left:%.2f ", mrac2.estimate_resistance_left());
-        Serial.printf("R_right:%.2f ", mrac2.estimate_resistance_right());
+        Serial.printf("R_neutral:%.2f ", mrac.estimate_resistance_neutral());
+        Serial.printf("R_left:%.2f ", mrac.estimate_resistance_left());
+        Serial.printf("R_right:%.2f ", mrac.estimate_resistance_right());
         Serial.println();
     }
     if ((loop_counter + 2) % 10 == 0)
     {
         Serial.print("$");
-        Serial.printf("L:%.2f ", mrac2.estimate_inductance() * 1e6f);
-        Serial.printf("V_drive:%.2f ", mrac2.v_drive_max);
+        Serial.printf("L:%.2f ", mrac.estimate_inductance() * 1e6f);
+        Serial.printf("V_drive:%.2f ", mrac.v_drive_max);
         Serial.printf("I_max_a:%f ", abs(emergencyStop.max_recorded_current_neutral));
         Serial.printf("I_max_b:%f ", abs(emergencyStop.max_recorded_current_left));
         Serial.printf("I_max_c:%f ", abs(emergencyStop.max_recorded_current_right));
@@ -316,22 +316,22 @@ void loop()
     while (total_pulse_length_timer.time_seconds < pulse_total_duration)
     {
         total_pulse_length_timer.step();
-        mrac2.iter(0, 0);
+        mrac.iter(0, 0);
         emergencyStop.check_current_limits();
     }
     total_pulse_length_timer.reset();
     mainloop_timing_clock.step();
     traceline->dt_pause = mainloop_timing_clock.dt_micros;
-    traceline->xhat_a2 = mrac2.xHat_a;
-    traceline->xhat_b2 = mrac2.xHat_b;
-    mrac2.prepare_for_idle();
-    traceline->v_drive_max = mrac2.v_drive_max;
-    mrac2.v_drive_max = 0;
+    traceline->xhat_a2 = mrac.xHat_a;
+    traceline->xhat_b2 = mrac.xHat_b;
+    mrac.prepare_for_idle();
+    traceline->v_drive_max = mrac.v_drive_max;
+    mrac.v_drive_max = 0;
     traceline->max_recorded_current_neutral = emergencyStop.max_recorded_current_neutral;
     traceline->max_recorded_current_left = emergencyStop.max_recorded_current_left;
     traceline->max_recorded_current_right = emergencyStop.max_recorded_current_right;
-    traceline->R_neutral = mrac2.estimate_resistance_neutral();
-    traceline->R_left = mrac2.estimate_resistance_left();
-    traceline->R_right = mrac2.estimate_resistance_right();
-    traceline->L = mrac2.estimate_inductance();
+    traceline->R_neutral = mrac.estimate_resistance_neutral();
+    traceline->R_left = mrac.estimate_resistance_left();
+    traceline->R_right = mrac.estimate_resistance_right();
+    traceline->L = mrac.estimate_inductance();
 }
