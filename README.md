@@ -15,8 +15,11 @@ BOM:
 * B-G431B-ESC1
 * USB cable and 12v
 * 3x transformer (XICON 42TU200-RC suggested)
-* 3x inductor (100-470µH 1A, exact specs TBD)
-* 3x ceramic caps (1-10µF 50v, exact specs TBD)
+* 3x inductor (220µH - 470µH, saturation current 1A.
+Look in the datasheet for a flat inductance-current curve.
+Examples: Fastron 09HVP-471X, coilcraft DR0608-224L or RFS1317-474KL, Murata 19R474C.
+Higher inductance is slightly preferred.)
+* 3x ceramic caps (10µF 50v)
 
 A panel-mount USB micro-B is useful if you want to make this into a nice box.
 [USB Micro-B](https://www.sparkfun.com/products/15464)
