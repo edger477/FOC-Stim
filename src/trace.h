@@ -24,7 +24,7 @@ struct MainLoopTraceLine
     float max_recorded_current_left;
     float max_recorded_current_right;
     float amplitude;
-    float R_neutral, R_left, R_right, L, pi_neutral, pi_left;
+    float R_neutral, R_left, R_right, L;
 };
 
 class Trace
@@ -77,17 +77,15 @@ public:
         }
         Serial.println();
         Serial.printf("mainloop MRAC:\r\n");
-        Serial.printf(" R_neutral|    R_left|   R_right|         L|pi_neutral|   pi_left|\r\n");
+        Serial.printf(" R_neutral|    R_left|   R_right|         L|\r\n");
         for (int i = 0; i < MAINLOOP_NUM_ENTRIES; i++)
         {
             MainLoopTraceLine *p = &main_loop_trace[(i + main_loop_trace_index) % MAINLOOP_NUM_ENTRIES];
-            Serial.printf("%10f %10f %10f %10f %10f %10f\r\n",
+            Serial.printf("%10f %10f %10f %10f\r\n",
                           p->R_neutral,
                           p->R_left,
                           p->R_right,
-                          p->L,
-                          p->pi_neutral,
-                          p->pi_left);
+                          p->L);
         }
         Serial.println();
     }

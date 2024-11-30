@@ -155,22 +155,17 @@ void ThreephasePulse::create_pulse(
             // env = sin(t * carrier_frequency / pulse_rise * pi / 2)
             _sincos(t * (carrier_frequency / pulse_rise) * _PI_2, &sin, &cos);
             pulse_envelope = sin;
-            pulse_envelope_d = cos * (carrier_frequency / pulse_rise) * _PI_2;
         } else if (t <= fall_start) {   // steady
             // env = 1
             pulse_envelope = 1;
-            pulse_envelope_d = 0;
         } else {    // falling
             // env = sin((t - fall_start + rise_end) * carrier_frequency / pulse_rise * pi / 2)
             _sincos((t - fall_start + rise_end) * (carrier_frequency / pulse_rise) * _PI_2, &sin, &cos);
             pulse_envelope = sin;
-            pulse_envelope_d = cos * (carrier_frequency / pulse_rise) * _PI_2;
         }
 
         this->a[i] = current_amplitude * (l * pulse_envelope);
         this->b[i] = current_amplitude * (r * pulse_envelope);
-        this->ad[i] = current_amplitude * (l * pulse_envelope_d + ld * pulse_envelope);
-        this->bd[i] = current_amplitude * (r * pulse_envelope_d + rd * pulse_envelope);
     }
 }
 
@@ -179,9 +174,6 @@ void ThreephasePulse::print()
     for (int i = 0; i < THREEPHASE_PULSE_BUFFER_SIZE; i++)
     {
         float c = -a[i] - b[i];
-        float cd = -ad[i] - bd[i];
-        printf("%f % f % f % f % f % f\r\n",
-               a[i], b[i], c,
-               ad[i], bd[i], cd);
+        printf("%f % f % f\r\n", a[i], b[i], c);
     }
 }

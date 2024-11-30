@@ -18,41 +18,21 @@ void MRACThreephaseStar::init(BLDCDriver *driver, CurrentSense *currentSense, Em
     this->emergencyStop = emergencyStop;
 }
 
-void MRACThreephaseStar::iter(
-    float desired_current_neutral, float desired_rate_of_current_change_neutral,
-    float desired_current_left, float desired_rate_of_current_change_left)
+void MRACThreephaseStar::iter(float desired_current_neutral, float desired_current_left)
 {
     uint32_t current_time = micros();
     float dt = float(current_time - last_update) * 1e-6f;
     last_update = current_time;
 
-    // PID update
-    float pid_error_a = xHat_a - desired_current_neutral;
-    float pid_error_b = xHat_b - desired_current_left;
-    pid_a_p += 0.5f * (pid_error_a * PID_Kp - pid_a_p);
-    pid_b_p += 0.5f * (pid_error_b * PID_Kp - pid_b_p);
-    pid_a_i += pid_error_a * PID_Ki;
-    pid_b_i += pid_error_b * PID_Ki;
-
-    // reference model control signal = r, calculate from xdot = Am * x + Bm * r
-    float r_a = R0 * desired_current_neutral + L0 * desired_rate_of_current_change_neutral;
-    float r_b = R0 * desired_current_left + L0 * desired_rate_of_current_change_left;
-
-    // PID control
-    r_a -= pid_a_p + pid_a_i;
-    r_b -= pid_b_p + pid_b_i;
+    // calculate r from: desired = xhat + dt * (A * xhat + B * r)
+    float r_a = ((desired_current_neutral - xHat_a) / min(dt, 50e-6f) - A * xHat_a) * (1/B);
+    float r_b = ((desired_current_left - xHat_b) / min(dt, 50e-6f) - A * xHat_b) * (1/B);
 
     // real hardware control signal = u = -Kx * xHat + Kr * r
     float u_ad = (+2 * Ka * xHat_a) - (1 * Kb * xHat_b) + (Kc * xHat_a + Kc * xHat_b);
     float u_bd = (-1 * Ka * xHat_a) + (2 * Kb * xHat_b) + (Kc * xHat_a + Kc * xHat_b);
     float u_a = Kr * r_a - u_ad;
     float u_b = Kr * r_b - u_bd;
-    // HACK HACK HACK
-    // if (desired_current_neutral == 0 && desired_current_left == 0)
-    // {
-    //     u_a = Kr * r_a;
-    //     u_b = Kr * r_b;
-    // }
     float u_c = -(u_a + u_b);
 
     float u_high = max(u_a, max(u_b, u_c));
@@ -106,19 +86,20 @@ void MRACThreephaseStar::iter(
     float error_b = x_b - state_lag1.xHat_b;
     if ((dt < 100e-6f) && ((abs(desired_current_neutral) > .01f) || (abs(desired_current_left) > 0.01f)))
     {
-        const float speed = 5.f;
+        const float speed = 10.f;
         const float gamma1 = -.1f * (speed * P * B * dt);
         const float gamma2 = .1f * (speed * P * B * dt);
 
         // do Kx += dt * gamma * x * err^T * P * B;
         // code below does not follow the textbook equation, but seems to work best....
         // the if prevents paramter drift if the system is not persistently exciting enough in any particular direction.
-        if (abs(error_a) > .08f)
-            Ka += gamma1 * (state_lag1.xHat_a * error_a);
-        if (abs(error_b) > .08f)
-            Kb += gamma1 * (state_lag1.xHat_b * error_b);
-        if (abs(error_a + error_b) > .08f)
-            Kc += gamma1 * ((state_lag1.xHat_a + state_lag1.xHat_b) * (error_a + error_b)); // = xHat_c * error_c
+        Ka_d -= 0.02f * (Ka_d - (state_lag1.xHat_a * error_a));
+        Kb_d -= 0.02f * (Kb_d - (state_lag1.xHat_b * error_b));
+        Kc_d -= 0.02f * (Kc_d - ((state_lag1.xHat_a + state_lag1.xHat_b) * (error_a + error_b))); // = xHat_c * error_c
+
+        Ka += gamma1 * Ka_d;
+        Kb += gamma1 * Kb_d;
+        Kc += gamma1 * Kc_d;
 
         // do kr += dt * gamma * r * err^T * P * B;
         Kr += gamma2 * (state_lag1.r_a * error_a);
@@ -133,9 +114,10 @@ void MRACThreephaseStar::iter(
         Kc = _constrain(Kc, minimum, maximum);
     }
 
-    // system state update, fast convergance to true system state.
-    xHat_a += 1.0f * error_a;
-    xHat_b += 1.0f * error_b;
+    // mixin measurements, effectively luenberger observer.
+    static constexpr float luenberger_gain = 1.f - expf(-_2PI * cutoff_frequency / estimated_loop_frequency); // 1 - L = exp(-w * T)
+    xHat_a += luenberger_gain * error_a;
+    xHat_b += luenberger_gain * error_b;
 
     // update the reference model state; x = Ax + By
     xHat_a += min(dt, 50e-6f) * (A * xHat_a + B * r_a);
@@ -208,8 +190,6 @@ void MRACThreephaseStar::print_debug_stats()
         Serial.printf("Rb =  %f\r\n", estimate_resistance_left());
         Serial.printf("Rc =  %f\r\n", estimate_resistance_right());
         Serial.printf("L  =  %f\r\n", estimate_inductance());
-        Serial.printf("Pia= %f %f\r\n", pid_a_p, pid_a_i);
-        Serial.printf("Pib= %f %f\r\n", pid_b_p, pid_b_i);
         for (unsigned n = 0; n < DEBUG_NUM_ENTRIES; n++)
         {
             int i = (n + debug_counter + DEBUG_NUM_ENTRIES) % DEBUG_NUM_ENTRIES;

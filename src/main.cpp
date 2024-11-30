@@ -240,14 +240,10 @@ void loop()
         iterations_per_pulse++;
         pulse_active_timer.step();
         float desired_current_neutral = 0;
-        float desired_current_change_neutral = 0;
         float desired_current_left = 0;
-        float desired_current_change_left = 0;
         pulse_threephase.get(pulse_active_timer.time_seconds,
-                             &desired_current_neutral, &desired_current_left,
-                             &desired_current_change_neutral, &desired_current_change_left);
-        mrac2.iter(desired_current_neutral, desired_current_change_neutral,
-                   desired_current_left, desired_current_change_left);
+                             &desired_current_neutral, &desired_current_left);
+        mrac2.iter(desired_current_neutral, desired_current_left);
     }
     pulse_active_timer.step();
 
@@ -256,8 +252,6 @@ void loop()
     traceline->dt_play = mainloop_timing_clock.dt_micros;
     traceline->xhat_a1 = mrac2.xHat_a;
     traceline->xhat_b1 = mrac2.xHat_b;
-    traceline->pi_neutral = mrac2.pid_a_i;
-    traceline->pi_left = mrac2.pid_b_i;
     mrac2.prepare_for_idle();
 
     // update stats
@@ -324,7 +318,7 @@ void loop()
     while (total_pulse_length_timer.time_seconds < pulse_total_duration)
     {
         total_pulse_length_timer.step();
-        mrac2.iter(0, 0, 0, 0);
+        mrac2.iter(0, 0);
         emergencyStop.check_current_limits();
     }
     total_pulse_length_timer.reset();

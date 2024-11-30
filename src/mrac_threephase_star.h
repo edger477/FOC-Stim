@@ -83,8 +83,8 @@ public:
     static constexpr float R_min = MODEL_RESISTANCE_MIN;
     static constexpr float R_max = MODEL_RESISTANCE_MAX;
 
-    static constexpr float PID_Kp = 1.0f;
-    static constexpr float PID_Ki = .1f;
+    static constexpr float cutoff_frequency = 300;
+    static constexpr float estimated_loop_frequency = 28000;
 
     static constexpr float A = -R0 / L0;
     static constexpr float B = 1 / L0;
@@ -97,9 +97,7 @@ public:
     void init(BLDCDriver *driver, CurrentSense *currentSense, EmergencyStop *emergencyStop);
 
     // call this as fast as possible
-    void iter(
-        float desired_current_neutral, float desired_rate_of_current_change_neutral,
-        float desired_current_left, float desired_rate_of_current_change_left);
+    void iter(float desired_current_neutral, float desired_current_left);
 
     // call this if you plan to stop calling iter() as fast as possible
     // to temporarily configure the hardware in a safe state.
@@ -119,18 +117,16 @@ public:
     CurrentSense *currentSense = nullptr;
     EmergencyStop *emergencyStop = nullptr;
 
-    // PI loop variables
-    float pid_a_p = 0;
-    float pid_b_p = 0;
-    float pid_a_i = 0;
-    float pid_b_i = 0;
-
     // MRAC variables.
     float Kr = 1;                 // feedforward gain, true inductance = L = L0 * Kr
     float Ka = 0;                 // R0 * Kr - 3 * Ka = Ra
     float Kb = 0;                 // R0 * Kr - 3 * Kb = Rb
     float Kc = 0;                 // R0 * Kr - 3 * Kc = Rc
     float xHat_a = 0, xHat_b = 0; // estimated system current
+
+    float Ka_d = 0;
+    float Kb_d = 0;
+    float Kc_d = 0;
 
     struct state_history_t
     {

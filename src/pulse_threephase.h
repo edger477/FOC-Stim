@@ -24,7 +24,7 @@ public:
         float left_right_calibration);
 
     // inline for speed
-    void get(float t, float *a_out, float *b_out, float *ad_out, float *bd_out)
+    void get(float t, float *a_out, float *b_out)
     {
         float integral, remainder;
         remainder = modff((t / pulse_duration) * THREEPHASE_PULSE_BUFFER_SIZE, &integral);
@@ -33,15 +33,11 @@ public:
         {
             *a_out = 0;
             *b_out = 0;
-            *ad_out = 0;
-            *bd_out = 0;
         }
         else
         {
             *a_out = lerp(remainder, a[i], a[i + 1]);
             *b_out = lerp(remainder, b[i], b[i + 1]);
-            *ad_out = lerp(remainder, ad[i], ad[i + 1]);
-            *bd_out = lerp(remainder, bd[i], bd[i + 1]);
         }
     }
 
@@ -50,8 +46,6 @@ public:
     float pulse_duration = 0;
     float a[THREEPHASE_PULSE_BUFFER_SIZE];
     float b[THREEPHASE_PULSE_BUFFER_SIZE];
-    float ad[THREEPHASE_PULSE_BUFFER_SIZE];
-    float bd[THREEPHASE_PULSE_BUFFER_SIZE];
 };
 
 #endif // FOCSTIM_PULSE_THREEPHASE_H
