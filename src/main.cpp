@@ -174,6 +174,7 @@ void loop()
     actual_pulse_frequency_clock.step();
     actual_pulse_frequency = lerp(.05f, actual_pulse_frequency, 1e6f / actual_pulse_frequency_clock.dt_micros);
 
+    // get all the pulse parameters
     uint32_t t0 = micros();
     float pulse_alpha = axes.alpha.get_remap(t0);
     float pulse_beta = axes.beta.get_remap(t0);
@@ -193,10 +194,12 @@ void loop()
     pulse_pause_duration *= float_rand(1 - pulse_interval_random, 1 + pulse_interval_random);
     float pulse_total_duration = pulse_active_duration + pulse_pause_duration;
 
+    // stats and safety checks
     traceline->pulse_active_duration = pulse_active_duration;
     traceline->pause_duration = pulse_pause_duration;
     traceline->amplitude = pulse_amplitude;
     emergencyStop.check_vbus();
+    emergencyStop.check_temperature();
 
     // pre-compute the new pulse
     mainloop_timing_clock.step();

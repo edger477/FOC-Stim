@@ -5,6 +5,9 @@
 #define TCODE_MAX_CURRENT 0.8f                          // in amps
 #define ESTOP_CURRENT_LIMIT (TCODE_MAX_CURRENT + 0.20f) // Needs about .20f to account for measurement noise.
 
+// board temperature limits
+#define MAXIMUM_TEMPERATURE 80.f
+
 // supply voltage and pwm
 #define STIM_PWM_FREQ 40000 // switching frequency is twice this frequency
 #define STIM_PSU_VOLTAGE 12.0f

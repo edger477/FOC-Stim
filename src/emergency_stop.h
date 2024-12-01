@@ -18,6 +18,9 @@ public:
     // check if VBUS is within safe limits
     void check_vbus();
 
+    // check if temperature is within safe limits
+    void check_temperature();
+
     // Put hardware in safe state, then call the debug function
     void trigger_emergency_stop();
 

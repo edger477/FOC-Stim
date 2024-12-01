@@ -58,6 +58,22 @@ void EmergencyStop::check_vbus()
     }
 }
 
+void EmergencyStop::check_temperature()
+{
+    float temperature = read_temperature(currentSense);
+    if (temperature > MAXIMUM_TEMPERATURE)
+    {
+        trigger_emergency_stop();
+        while (1)
+        {
+            Serial.printf("temperature limit exceeded %f. Current temperature=%f. Restart device to proceed\r\n",
+                          temperature, read_temperature(currentSense));
+            delay(5000);
+        }
+    }
+}
+
+
 void EmergencyStop::trigger_emergency_stop()
 {
     // drain the inductors as fast as possible.
