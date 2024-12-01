@@ -73,12 +73,10 @@ void MRACThreephaseStar::iter(float desired_current_neutral, float desired_curre
     float x_c = currents.a - midpoint;  // right
 
     // bookkeeping (optional)
-    neutral_abs_sum += abs(x_a);
-    left_abs_sum += abs(x_b);
-    right_abs_sum += abs(x_c);
-    neutral_sum += x_a;
-    left_sum += x_b;
-    right_sum += x_c;
+    current_squared_a += min(50e-6f, dt) * abs(x_a * x_a);
+    current_squared_b += min(50e-6f, dt) * abs(x_b * x_b);
+    current_squared_c += min(50e-6f, dt) * abs((x_a + x_b) * (x_a + x_b));
+
 
     // calculate error and perform the update step
     // based on lagged system state.

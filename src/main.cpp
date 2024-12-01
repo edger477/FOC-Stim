@@ -140,6 +140,7 @@ void loop()
 {
     static Clock mainloop_timing_clock;
     static Clock actual_pulse_frequency_clock;
+    static Clock rms_current_clock;
     static uint32_t loop_counter = 0;
     static float actual_pulse_frequency = 0;
 
@@ -214,21 +215,6 @@ void loop()
         calibration_ud,
         calibration_lr);
 
-    // reset stats
-    mrac.neutral_abs_sum = 0;
-    mrac.left_abs_sum = 0;
-    mrac.right_abs_sum = 0;
-    mrac.neutral_sum = 0;
-    mrac.left_sum = 0;
-    mrac.right_sum = 0;
-
-    static float neutral_abs_sum = 0;
-    static float left_abs_sum = 0;
-    static float right_abs_sum = 0;
-    static float neutral_dc = 0;
-    static float left_dc = 0;
-    static float right_dc = 0;
-
     // play the pulse
     mainloop_timing_clock.step();
     traceline->dt_compute = mainloop_timing_clock.dt_micros;
@@ -254,14 +240,6 @@ void loop()
     traceline->xhat_b1 = mrac.xHat_b;
     mrac.prepare_for_idle();
 
-    // update stats
-    neutral_abs_sum = lerp(0.1f, neutral_abs_sum, mrac.neutral_abs_sum);
-    left_abs_sum = lerp(0.1f, left_abs_sum, mrac.left_abs_sum);
-    right_abs_sum = lerp(0.1f, right_abs_sum, mrac.right_abs_sum);
-    neutral_dc = lerp(0.1f, neutral_dc, mrac.neutral_sum / iterations_per_pulse);
-    left_dc = lerp(0.1f, left_dc, mrac.left_sum / iterations_per_pulse);
-    right_dc = lerp(0.1f, right_dc, mrac.right_sum / iterations_per_pulse);
-
     // occasionally print some stats..
     if ((loop_counter + 0) % 10 == 0)
     {
@@ -269,12 +247,12 @@ void loop()
         Serial.printf("R_neutral:%.2f ", mrac.estimate_resistance_neutral());
         Serial.printf("R_left:%.2f ", mrac.estimate_resistance_left());
         Serial.printf("R_right:%.2f ", mrac.estimate_resistance_right());
+        Serial.printf("L:%.2f ", mrac.estimate_inductance() * 1e6f);
         Serial.println();
     }
     if ((loop_counter + 2) % 10 == 0)
     {
         Serial.print("$");
-        Serial.printf("L:%.2f ", mrac.estimate_inductance() * 1e6f);
         Serial.printf("V_drive:%.2f ", mrac.v_drive_max);
         Serial.printf("I_max_a:%f ", abs(emergencyStop.max_recorded_current_neutral));
         Serial.printf("I_max_b:%f ", abs(emergencyStop.max_recorded_current_left));
@@ -283,23 +261,22 @@ void loop()
         emergencyStop.max_recorded_current_neutral = 0;
         emergencyStop.max_recorded_current_left = 0;
         emergencyStop.max_recorded_current_right = 0;
-
     }
     if ((loop_counter + 4) % 10 == 0)
     {
-        Serial.print("$");
-        Serial.printf("I_abs_neutral:%f ", neutral_abs_sum);
-        Serial.printf("I_abs_left:%f ", left_abs_sum);
-        Serial.printf("I_abs_right:%f ", right_abs_sum);
-        Serial.println();
+
     }
     if ((loop_counter + 6) % 10 == 0)
-    {
+    {   
+        rms_current_clock.step();
         Serial.print("$");
-        Serial.printf("DC_neutral:%f ", neutral_dc);
-        Serial.printf("DC_left:%f ", left_dc);
-        Serial.printf("DC_right:%f ", right_dc);
+        Serial.printf("rms_neutral:%f ", sqrtf(mrac.current_squared_a / rms_current_clock.dt_seconds));
+        Serial.printf("rms_left:%f ", sqrtf(mrac.current_squared_b / rms_current_clock.dt_seconds));
+        Serial.printf("rms_right:%f ", sqrtf(mrac.current_squared_c / rms_current_clock.dt_seconds));
         Serial.println();
+        mrac.current_squared_a = 0;
+        mrac.current_squared_b = 0;
+        mrac.current_squared_c = 0;
     }
     if ((loop_counter + 8) % 20 == 0)
     {

@@ -137,13 +137,10 @@ public:
     } state_lag1 = {};
 
     // log stats
-    float neutral_abs_sum = 0;
-    float left_abs_sum = 0;
-    float right_abs_sum = 0;
-    float neutral_sum = 0;
-    float left_sum = 0;
-    float right_sum = 0;
     float v_drive_max = 0;
+    float current_squared_a = 0;
+    float current_squared_b = 0;
+    float current_squared_c = 0;
 
     // more log stats
     struct
