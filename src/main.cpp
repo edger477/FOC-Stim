@@ -109,7 +109,6 @@ void setup()
     driver.enable();
 
     Serial.printf("- init mrac\r\n");
-    // mrac.init(&driver, &currentSense);
     mrac.init(&driver, &currentSense, &emergencyStop);
 
     Clock vbus_clock;

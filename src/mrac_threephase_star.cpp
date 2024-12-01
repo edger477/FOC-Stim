@@ -115,7 +115,7 @@ void MRACThreephaseStar::iter(float desired_current_neutral, float desired_curre
     }
 
     // mixin measurements, effectively luenberger observer.
-    static constexpr float luenberger_gain = 1.f - expf(-_2PI * cutoff_frequency / estimated_loop_frequency); // 1 - L = exp(-w * T)
+    static constexpr float luenberger_gain = 1.f - expf(-_2PI * observer_cutoff_frequency / estimated_loop_frequency); // 1 - L = exp(-w * T)
     xHat_a += luenberger_gain * error_a;
     xHat_b += luenberger_gain * error_b;
 
@@ -159,6 +159,7 @@ void MRACThreephaseStar::prepare_for_idle()
 float MRACThreephaseStar::estimate_inductance()
 {
     return L0 * Kr;
+    // The true inductance is actually dt / ln(1 - dt / (L0 * Kr))
 }
 
 float MRACThreephaseStar::estimate_resistance_neutral()

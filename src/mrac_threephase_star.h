@@ -83,8 +83,8 @@ public:
     static constexpr float R_min = MODEL_RESISTANCE_MIN;
     static constexpr float R_max = MODEL_RESISTANCE_MAX;
 
-    static constexpr float cutoff_frequency = 300;
     static constexpr float estimated_loop_frequency = 28000;
+    static constexpr float observer_cutoff_frequency = 300;
 
     static constexpr float A = -R0 / L0;
     static constexpr float B = 1 / L0;
