@@ -15,11 +15,15 @@ BOM:
 * B-G431B-ESC1
 * USB cable and 12v
 * 3x transformer (XICON 42TU200-RC suggested)
-* 3x inductor (220µH - 470µH, saturation current 1A.
-Look in the datasheet for a flat inductance-current curve.
-Examples: Fastron 09HVP-471X, coilcraft DR0608-224L or RFS1317-474KL, Murata 19R474C.
-Higher inductance is slightly preferred.)
+* 3x inductor (220µH - 470µH)
 * 3x ceramic caps (10µF 50v)
+
+When selecting an inductor, look for saturation current about 1A and flat inductance-current curve in the datasheet. Some options:
+* KEMET SBCP-11HY221H to SBCP-11HY471H. 80HY or 14HY series also a possibility.
+* Fastron 09HVP-221X to 09HVP-471X.
+* Coilcraft RFB0810 or RFB1010 or RFS1317 series
+* Coilcraft DR0608-224L, usable if cramped for space
+
 
 A panel-mount USB micro-B is useful if you want to make this into a nice box.
 [USB Micro-B](https://www.sparkfun.com/products/15464)
@@ -30,6 +34,8 @@ How to wire:
 ![](docs/images/schematic.png)
 
 `U`, `V`, `W` are the 3 outputs on the board, with `U` being the one closest to the potentiometer.
+
+![](docs/images/breadboard.jpg)
 
 # Software setup
 
