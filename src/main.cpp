@@ -105,7 +105,6 @@ void setup()
         {
         }
     }
-    driver.setPwm(driver.voltage_power_supply / 2, driver.voltage_power_supply / 2, driver.voltage_power_supply / 2);
     driver.enable();
 
     Serial.printf("- init mrac\r\n");
@@ -138,39 +137,49 @@ void setup()
 
 void loop()
 {
-    static Clock mainloop_timing_clock;
+    static Clock total_pulse_length_timer;
+    static float pulse_total_duration = 0;
     static Clock actual_pulse_frequency_clock;
     static Clock rms_current_clock;
-    static uint32_t loop_counter = 0;
+    static uint32_t pulse_counter = 0;
     static float actual_pulse_frequency = 0;
 
-    // grab the new pulse parameters from serial comms
+    // do comms
     bool dirty = tcode.update_from_serial();
 
+    // safety checks
+    emergencyStop.check_vbus();
+    emergencyStop.check_temperature();
+
+    // keepalive timer
     if (dirty) {
         keepalive_clock.reset();
     }
     keepalive_clock.step();
+    if (keepalive_clock.time_seconds > 2) {
+        Serial.println("Connection lost? Stopping pulse generation.");
+        play_started = false;
+    }
 
+    // DSTART / DSTOP
     if (! play_started) {
         delay(10);
         return;
     }
 
-    if (keepalive_clock.time_seconds > 2) {
-        Serial.println("Connection lost? Stopping pulse generation.");
-        play_started = false;
+    // stall out idle portion of the pulse
+    total_pulse_length_timer.step();
+    if (total_pulse_length_timer.time_seconds <= pulse_total_duration) {
         return;
     }
 
-    Clock total_pulse_length_timer;
-
+    // ready to generate next pulse!
     MainLoopTraceLine *traceline = trace.next_main_loop_line();
-    mainloop_timing_clock.reset();
-    traceline->t_start = mainloop_timing_clock.last_update_time;
+    total_pulse_length_timer.reset();
+    traceline->t_start = total_pulse_length_timer.last_update_time;
 
     // calculate stats
-    loop_counter++;
+    pulse_counter++;
     actual_pulse_frequency_clock.step();
     actual_pulse_frequency = lerp(.05f, actual_pulse_frequency, 1e6f / actual_pulse_frequency_clock.dt_micros);
 
@@ -192,18 +201,9 @@ void loop()
     float pulse_active_duration = pulse_width / pulse_carrier_frequency;
     float pulse_pause_duration = max(0.f, 1 / pulse_frequency - pulse_active_duration);
     pulse_pause_duration *= float_rand(1 - pulse_interval_random, 1 + pulse_interval_random);
-    float pulse_total_duration = pulse_active_duration + pulse_pause_duration;
-
-    // stats and safety checks
-    traceline->pulse_active_duration = pulse_active_duration;
-    traceline->pause_duration = pulse_pause_duration;
-    traceline->amplitude = pulse_amplitude;
-    emergencyStop.check_vbus();
-    emergencyStop.check_temperature();
+    pulse_total_duration = pulse_active_duration + pulse_pause_duration;
 
     // pre-compute the new pulse
-    mainloop_timing_clock.step();
-    traceline->dt_comms = mainloop_timing_clock.dt_micros;
     pulse_threephase.create_pulse(
         pulse_amplitude,
         pulse_alpha,
@@ -215,15 +215,21 @@ void loop()
         calibration_ud,
         calibration_lr);
 
+    // store stats
+    traceline->amplitude = pulse_amplitude;
+    total_pulse_length_timer.step();
+    traceline->dt_compute = total_pulse_length_timer.dt_micros;
+
+    // reset mrac stats
+    mrac.v_drive_max = 0;
+
     // play the pulse
-    mainloop_timing_clock.step();
-    traceline->dt_compute = mainloop_timing_clock.dt_micros;
-    Clock pulse_active_timer{};
-    uint32_t iterations_per_pulse = 0;
-    while (pulse_active_timer.time_seconds < (pulse_active_duration + 200e-6f))
+    mrac.pulse_begin();
+    uint32_t number_of_iterations = 0;
+    Clock pulse_active_timer;
+    while (pulse_active_timer.time_seconds < pulse_threephase.pulse_duration)
     {
-        traceline->mrac_iters++;
-        iterations_per_pulse++;
+        number_of_iterations++;
         pulse_active_timer.step();
         float desired_current_neutral = 0;
         float desired_current_left = 0;
@@ -233,15 +239,30 @@ void loop()
     }
     pulse_active_timer.step();
 
-    // update stats
-    mainloop_timing_clock.step();
-    traceline->dt_play = mainloop_timing_clock.dt_micros;
-    traceline->xhat_a1 = mrac.xHat_a;
-    traceline->xhat_b1 = mrac.xHat_b;
-    mrac.prepare_for_idle();
+    // wait until the lines stabilize
+    Clock pulse_stabilize_timer;
+    mrac.pulse_end();
+    pulse_stabilize_timer.step();
+
+    // store stats
+    Clock stats_timer;
+    float iters_per_sec = number_of_iterations / pulse_active_timer.time_seconds;
+    traceline->mrac_iters = number_of_iterations;
+    traceline->dt_play = pulse_active_timer.time_milis;
+    traceline->dt_stabilize = pulse_stabilize_timer.time_milis;
+
+    traceline->v_drive_max = mrac.v_drive_max;
+    traceline->max_recorded_current_neutral = emergencyStop.max_recorded_current_neutral;
+    traceline->max_recorded_current_left = emergencyStop.max_recorded_current_left;
+    traceline->max_recorded_current_right = emergencyStop.max_recorded_current_right;
+
+    traceline->R_neutral = mrac.estimate_resistance_neutral();
+    traceline->R_left = mrac.estimate_resistance_left();
+    traceline->R_right = mrac.estimate_resistance_right();
+    traceline->L = mrac.estimate_inductance();
 
     // occasionally print some stats..
-    if ((loop_counter + 0) % 10 == 0)
+    if ((pulse_counter + 0) % 10 == 0)
     {
         Serial.print("$");
         Serial.printf("R_neutral:%.2f ", mrac.estimate_resistance_neutral());
@@ -250,7 +271,7 @@ void loop()
         Serial.printf("L:%.2f ", mrac.estimate_inductance() * 1e6f);
         Serial.println();
     }
-    if ((loop_counter + 2) % 10 == 0)
+    if ((pulse_counter + 2) % 10 == 0)
     {
         Serial.print("$");
         Serial.printf("V_drive:%.2f ", mrac.v_drive_max);
@@ -262,11 +283,11 @@ void loop()
         emergencyStop.max_recorded_current_left = 0;
         emergencyStop.max_recorded_current_right = 0;
     }
-    if ((loop_counter + 4) % 10 == 0)
+    if ((pulse_counter + 4) % 10 == 0)
     {
 
     }
-    if ((loop_counter + 6) % 10 == 0)
+    if ((pulse_counter + 6) % 10 == 0)
     {   
         rms_current_clock.step();
         Serial.print("$");
@@ -278,39 +299,16 @@ void loop()
         mrac.current_squared_b = 0;
         mrac.current_squared_c = 0;
     }
-    if ((loop_counter + 8) % 20 == 0)
+    if ((pulse_counter + 8) % 20 == 0)
     {
         Serial.print("$");
         Serial.printf("V_BUS:%.2f ", read_vbus(&currentSense));
         Serial.printf("temp:%.1f ", read_temperature(&currentSense));
-        Serial.printf("F_mrac:%.0f ", iterations_per_pulse / pulse_active_timer.time_seconds);
+        Serial.printf("F_mrac:%.0f ", iters_per_sec);
         Serial.printf("F_pulse:%.1f ", actual_pulse_frequency);
         Serial.println();
     }
 
-    mainloop_timing_clock.step();
-    traceline->dt_logs = mainloop_timing_clock.dt_micros;
-    total_pulse_length_timer.step();
-    // stall out the pulse pause.
-    while (total_pulse_length_timer.time_seconds < pulse_total_duration)
-    {
-        total_pulse_length_timer.step();
-        mrac.iter(0, 0);
-        emergencyStop.check_current_limits();
-    }
-    total_pulse_length_timer.reset();
-    mainloop_timing_clock.step();
-    traceline->dt_pause = mainloop_timing_clock.dt_micros;
-    traceline->xhat_a2 = mrac.xHat_a;
-    traceline->xhat_b2 = mrac.xHat_b;
-    mrac.prepare_for_idle();
-    traceline->v_drive_max = mrac.v_drive_max;
-    mrac.v_drive_max = 0;
-    traceline->max_recorded_current_neutral = emergencyStop.max_recorded_current_neutral;
-    traceline->max_recorded_current_left = emergencyStop.max_recorded_current_left;
-    traceline->max_recorded_current_right = emergencyStop.max_recorded_current_right;
-    traceline->R_neutral = mrac.estimate_resistance_neutral();
-    traceline->R_left = mrac.estimate_resistance_left();
-    traceline->R_right = mrac.estimate_resistance_right();
-    traceline->L = mrac.estimate_inductance();
+    stats_timer.step();
+    traceline->dt_logs = stats_timer.dt_micros;
 }

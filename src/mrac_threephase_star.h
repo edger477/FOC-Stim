@@ -96,12 +96,14 @@ public:
 
     void init(BLDCDriver *driver, CurrentSense *currentSense, EmergencyStop *emergencyStop);
 
-    // call this as fast as possible
-    void iter(float desired_current_neutral, float desired_current_left);
+    // call before starting a pulse to take hardware out of low-power safe state.
+    void pulse_begin();
 
-    // call this if you plan to stop calling iter() as fast as possible
-    // to temporarily configure the hardware in a safe state.
-    void prepare_for_idle();
+    // call after a pulse to configure the hardware in low-power safe state.
+    void pulse_end();
+
+    // call this as fast as possible when generating a pulse.
+    void iter(float desired_current_neutral, float desired_current_left);
 
     float estimate_inductance();
     float estimate_resistance_neutral();
@@ -124,9 +126,12 @@ public:
     float Kc = 0;                 // R0 * Kr - 3 * Kc = Rc
     float xHat_a = 0, xHat_b = 0; // estimated system current
 
+    // TODO: test if this actually makes a meaningfull difference
     float Ka_d = 0;
     float Kb_d = 0;
     float Kc_d = 0;
+
+    uint32_t is_stabilized = 0;
 
     struct state_history_t
     {

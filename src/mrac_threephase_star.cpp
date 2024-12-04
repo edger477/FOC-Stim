@@ -18,6 +18,29 @@ void MRACThreephaseStar::init(BLDCDriver *driver, CurrentSense *currentSense, Em
     this->emergencyStop = emergencyStop;
 }
 
+void MRACThreephaseStar::pulse_begin()
+{
+    // switch as close as possible to the pwm peak to avoid transients
+    PhaseCurrent_s currents = currentSense->getPhaseCurrents();
+    while (currents.a == currentSense->getPhaseCurrents().a) {};
+    driver->setPwm(driver->voltage_power_supply / 2, driver->voltage_power_supply / 2, driver->voltage_power_supply / 2);
+}
+
+void MRACThreephaseStar::pulse_end()
+{
+    // wait until lines stabilize
+    while (is_stabilized <= 5) {
+        iter(0, 0);
+    }
+
+    // switch as close as possible to the pwm peak to avoid transients
+    PhaseCurrent_s currents = currentSense->getPhaseCurrents();
+    while (currents.a == currentSense->getPhaseCurrents().a) {};
+    driver->setPwm(0, 0, 0);    // connect all to ground.
+    xHat_a = 0;
+    xHat_b = 0;
+}
+
 void MRACThreephaseStar::iter(float desired_current_neutral, float desired_current_left)
 {
     uint32_t current_time = micros();
@@ -71,6 +94,11 @@ void MRACThreephaseStar::iter(float desired_current_neutral, float desired_curre
     float x_a = currents.b - midpoint;  // neutral
     float x_b = currents.c - midpoint;  // left
     float x_c = currents.a - midpoint;  // right
+    if ((abs(x_a) + abs(x_b) + abs(x_c)) < 0.1f) {
+        is_stabilized++;
+    } else {
+        is_stabilized = 0;
+    }
 
     // bookkeeping (optional)
     current_squared_a += min(50e-6f, dt) * abs(x_a * x_a);
@@ -140,18 +168,6 @@ void MRACThreephaseStar::iter(float desired_current_neutral, float desired_curre
 
     // store system state
     state_lag1 = {r_a, r_b, xHat_a, xHat_b};
-}
-
-// Configure the hardware in a safe state
-// before running code that is slow.
-void MRACThreephaseStar::prepare_for_idle()
-{
-    driver->setPwm(
-        driver->voltage_power_supply / 2,
-        driver->voltage_power_supply / 2,
-        driver->voltage_power_supply / 2);
-    xHat_a = 0;
-    xHat_b = 0;
 }
 
 float MRACThreephaseStar::estimate_inductance()

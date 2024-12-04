@@ -7,18 +7,11 @@
 struct MainLoopTraceLine
 {
     uint32_t t_start;
-    uint32_t dt_comms;
     uint32_t dt_compute;
     uint32_t dt_play;
+    uint32_t dt_stabilize;
     uint32_t dt_logs;
-    uint32_t dt_pause;
     uint32_t mrac_iters;
-    float pulse_active_duration;
-    float pause_duration;
-    float xhat_a1;
-    float xhat_b1;
-    float xhat_a2;
-    float xhat_b2;
     float v_drive_max;
     float max_recorded_current_neutral;
     float max_recorded_current_left;
@@ -45,30 +38,25 @@ public:
     void print_mainloop_trace()
     {
         Serial.printf("mainloop timings:\r\n");
-        Serial.printf("     start|     comms|   compute|      play|      logs|      idle|     niter|\r\n");
+        Serial.printf("     start|   compute|      play| stabilize|      logs|     niter|\r\n");
         for (int i = 0; i < MAINLOOP_NUM_ENTRIES; i++)
         {
             MainLoopTraceLine *p = &main_loop_trace[(i + main_loop_trace_index) % MAINLOOP_NUM_ENTRIES];
-            Serial.printf("%10lu %10lu %10lu %10lu %10lu %10lu %10lu\r\n",
+            Serial.printf("%10lu %10lu %10lu %10lu %10lu %10lu\r\n",
                           p->t_start,
-                          p->dt_comms,
                           p->dt_compute,
                           p->dt_play,
+                          p->dt_stabilize,
                           p->dt_logs,
-                          p->dt_pause,
                           p->mrac_iters);
         }
         Serial.println();
         Serial.printf("mainloop signals:\r\n");
-        Serial.printf("   xHat_a1|   xHat_b1|   xHat_a2|   xHat_b2|   v_drive|   max I_N|   max I_L|   max I_R| amplitude|\r\n");
+        Serial.printf("   v_drive|   max I_N|   max I_L|   max I_R| amplitude|\r\n");
         for (int i = 0; i < MAINLOOP_NUM_ENTRIES; i++)
         {
             MainLoopTraceLine *p = &main_loop_trace[(i + main_loop_trace_index) % MAINLOOP_NUM_ENTRIES];
-            Serial.printf("%10f %10f %10f %10f %10f %10f %10f %10f %10f\r\n",
-                          p->xhat_a1,
-                          p->xhat_b1,
-                          p->xhat_a2,
-                          p->xhat_b2,
+            Serial.printf("%10f %10f %10f %10f %10f\r\n",
                           p->v_drive_max,
                           p->max_recorded_current_neutral,
                           p->max_recorded_current_left,
