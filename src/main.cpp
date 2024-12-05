@@ -156,7 +156,7 @@ void loop()
         keepalive_clock.reset();
     }
     keepalive_clock.step();
-    if (keepalive_clock.time_seconds > 2) {
+    if (keepalive_clock.time_seconds > 2 && play_started) {
         Serial.println("Connection lost? Stopping pulse generation.");
         play_started = false;
     }
