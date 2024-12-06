@@ -124,14 +124,9 @@ void MRACThreephaseStar::iter(float desired_current_neutral, float desired_curre
 
         // do Kx += dt * gamma * x * err^T * P * B;
         // code below does not follow the textbook equation, but seems to work best....
-        // the if prevents paramter drift if the system is not persistently exciting enough in any particular direction.
-        Ka_d -= 0.02f * (Ka_d - (state_lag1.xHat_a * error_a));
-        Kb_d -= 0.02f * (Kb_d - (state_lag1.xHat_b * error_b));
-        Kc_d -= 0.02f * (Kc_d - ((state_lag1.xHat_a + state_lag1.xHat_b) * (error_a + error_b))); // = xHat_c * error_c
-
-        Ka += gamma1 * Ka_d;
-        Kb += gamma1 * Kb_d;
-        Kc += gamma1 * Kc_d;
+        Ka += gamma1 * (state_lag1.xHat_a * error_a);
+        Kb += gamma1 * (state_lag1.xHat_b * error_b);
+        Kc += gamma1 * ((state_lag1.xHat_a + state_lag1.xHat_b) * (error_a + error_b)); // = xHat_c * error_c
 
         // do kr += dt * gamma * r * err^T * P * B;
         Kr += gamma2 * (state_lag1.r_a * error_a);

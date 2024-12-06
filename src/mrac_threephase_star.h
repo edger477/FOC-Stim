@@ -126,11 +126,6 @@ public:
     float Kc = 0;                 // R0 * Kr - 3 * Kc = Rc
     float xHat_a = 0, xHat_b = 0; // estimated system current
 
-    // TODO: test if this actually makes a meaningfull difference
-    float Ka_d = 0;
-    float Kb_d = 0;
-    float Kc_d = 0;
-
     uint32_t is_stabilized = 0;
 
     struct state_history_t
