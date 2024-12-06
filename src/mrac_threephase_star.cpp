@@ -20,10 +20,13 @@ void MRACThreephaseStar::init(BLDCDriver *driver, CurrentSense *currentSense, Em
 
 void MRACThreephaseStar::pulse_begin()
 {
-    // switch as close as possible to the pwm peak to avoid transients
-    PhaseCurrent_s currents = currentSense->getPhaseCurrents();
-    while (currents.a == currentSense->getPhaseCurrents().a) {};
-    driver->setPwm(driver->voltage_power_supply / 2, driver->voltage_power_supply / 2, driver->voltage_power_supply / 2);
+    TIM_TypeDef *tim = TIM1;
+    // Temporarily disable the update event to ensure atomic update
+    // of all 3 pwm timer outputs, preventing transients.
+    SET_BIT(tim->CR1, TIM_CR1_UDIS_Msk);
+    float center = driver->voltage_power_supply / 2;
+    driver->setPwm(center, center, center);
+    CLEAR_BIT(tim->CR1, TIM_CR1_UDIS_Msk);
 }
 
 void MRACThreephaseStar::pulse_end()
@@ -33,10 +36,13 @@ void MRACThreephaseStar::pulse_end()
         iter(0, 0);
     }
 
-    // switch as close as possible to the pwm peak to avoid transients
-    PhaseCurrent_s currents = currentSense->getPhaseCurrents();
-    while (currents.a == currentSense->getPhaseCurrents().a) {};
+    TIM_TypeDef *tim = TIM1;
+    // Temporarily disable the update event to ensure atomic update
+    // of all 3 pwm timer outputs, preventing transients.
+    SET_BIT(tim->CR1, TIM_CR1_UDIS_Msk);
     driver->setPwm(0, 0, 0);    // connect all to ground.
+    CLEAR_BIT(tim->CR1, TIM_CR1_UDIS_Msk);
+
     xHat_a = 0;
     xHat_b = 0;
 }
