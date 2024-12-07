@@ -51,8 +51,6 @@ void ThreephasePulse::create_pulse(
     float pulse_width, float pulse_rise,
     float center_calibration, float up_down_calibration, float left_right_calibration)
 {
-    // TODO: random polarity?
-
     // constrain (alpha, beta) to unit circle
     float r = sqrtf(alpha * alpha + beta * beta);
     if (r > 1)
@@ -109,16 +107,14 @@ void ThreephasePulse::create_pulse(
     // float c22 = -0.5f * a12 + _SQRT3_2 * a22;
 
     static float random_start_angle = 0;
-    random_start_angle = random_start_angle + 1;
+    random_start_angle = random_start_angle + (_2PI * 19 / 97); // ~1/5
     if (random_start_angle > _2PI)
     {
         random_start_angle -= _2PI;
     }
-    // float random_start_angle = float_rand(0, _2PI);
 
     static bool polarity = 0;
     polarity = !polarity;
-    // bool polarity = rand() % 2;
 
 #ifdef THREEPHASE_PULSE_DEFEAT_RANDOMIZATION
     random_start_angle = 0;
