@@ -19,7 +19,6 @@ static void get_calibration_coefs(
     float a = sinf(theta);
     float b = cosf(theta);
     float scale = 1.f / powf(10, (r / 10));
-    ;
 
     if (r == 0)
     {
@@ -54,6 +53,7 @@ void ThreephasePulse::create_pulse(
 {
     // TODO: random polarity?
 
+    // constrain (alpha, beta) to unit circle
     float r = sqrtf(alpha * alpha + beta * beta);
     if (r > 1)
     {
@@ -141,14 +141,10 @@ void ThreephasePulse::create_pulse(
             sin = -sin;
             cos = -cos;
         }
-        float cosd = -sin * _2PI * carrier_frequency;
-        float sind = cos * _2PI * carrier_frequency;
 
         // (ab * calibration * projection) * [cos, sin]^T
         float l = c11 * cos + c12 * sin;
         float r = c21 * cos + c22 * sin;
-        float ld = c11 * cosd + c12 * sind;
-        float rd = c21 * cosd + c22 * sind;
 
         float pulse_envelope, pulse_envelope_d;
         if (t <= rise_end) {    // rising

@@ -24,20 +24,20 @@ public:
         float left_right_calibration);
 
     // inline for speed
-    void get(float t, float *a_out, float *b_out)
+    void get(float t, float *neutral, float *left)
     {
         float integral, remainder;
         remainder = modff((t / pulse_duration) * THREEPHASE_PULSE_BUFFER_SIZE, &integral);
         uint32_t i = integral;
         if ((i + 1) >= THREEPHASE_PULSE_BUFFER_SIZE || t < 0)
         {
-            *a_out = 0;
-            *b_out = 0;
+            *neutral = 0;
+            *left = 0;
         }
         else
         {
-            *a_out = a[i] + remainder * (a[i + 1] - a[i]);
-            *b_out = b[i] + remainder * (b[i + 1] - b[i]);
+            *neutral = a[i] + remainder * (a[i + 1] - a[i]);
+            *left = b[i] + remainder * (b[i + 1] - b[i]);
         }
     }
 
