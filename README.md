@@ -39,10 +39,12 @@ How to wire:
 
 # Software setup
 
-Install Visual Studio Code with plugins `platformio` and `teleplot`.  
-Firmware should compile and upload without problems.
+Install Visual Studio Code with plugins `platformio` and `teleplot`,
+then build and upload the firmware, instructions below.
 
 Inspect `FOC-Stim/src/config.h` to configure the current limits.
+
+![](docs/images/pio.png)
 
 # Control
 
