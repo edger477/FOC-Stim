@@ -306,6 +306,7 @@ void loop()
         Serial.printf("temp:%.1f ", read_temperature(&currentSense));
         Serial.printf("F_mrac:%.0f ", iters_per_sec);
         Serial.printf("F_pulse:%.1f ", actual_pulse_frequency);
+        Serial.printf("pot:%f ", read_potentiometer(&currentSense));
         Serial.println();
     }
 

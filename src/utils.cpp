@@ -1,6 +1,7 @@
 #include <cmath>
 
 #include <SimpleFOC.h>
+#include "utils.h"
 
 float float_rand(float min, float max)
 {
@@ -170,4 +171,10 @@ float read_temperature(CurrentSense *currentSense)
 {
     float adc_volts = _readADCVoltageLowSide(A_TEMPERATURE, currentSense->params);
     return Ntc2TempV(adc_volts);
+}
+
+float read_potentiometer(CurrentSense *currentSense)
+{
+    float adc_volts = _readADCVoltageLowSide(A_POTENTIOMETER, currentSense->params);
+    return adc_volts;
 }

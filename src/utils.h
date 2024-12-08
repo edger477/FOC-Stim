@@ -19,4 +19,6 @@ float read_vbus(CurrentSense *currentSense);
 
 float read_temperature(CurrentSense *currentSense);
 
+float read_potentiometer(CurrentSense *currentSense);
+
 #endif // FOCSTIM_UTILS_H
