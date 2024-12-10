@@ -39,6 +39,10 @@ How to wire:
 
 # Software setup
 
+From the factory, the board has a very old ST-link firmware that prevents the usb-serial from working
+correctly on some computers. It is highly recommended to update the ST-link firmware using
+[STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html) before proceeding.
+
 Install Visual Studio Code with plugins `platformio` and `teleplot`,
 then build and upload the firmware, instructions below.
 
