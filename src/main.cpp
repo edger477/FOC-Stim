@@ -240,6 +240,11 @@ void loop()
     pulse_pause_duration *= float_rand(1 - pulse_interval_random, 1 + pulse_interval_random);
     pulse_total_duration = pulse_active_duration + pulse_pause_duration;
 
+    // mix in potmeter
+    float potmeter_voltage = read_potentiometer(&currentSense);
+    float potmeter_value = inverse_lerp(potmeter_voltage, POTMETER_ZERO_PERCENT_VOLTAGE, POTMETER_HUNDRED_PERCENT_VOLTAGE);
+    pulse_amplitude *= potmeter_value;
+
     // pre-compute the new pulse
     pulse_threephase.create_pulse(
         pulse_amplitude,
@@ -343,7 +348,7 @@ void loop()
         Serial.printf("temp:%.1f ", read_temperature(&currentSense));
         Serial.printf("F_mrac:%.0f ", iters_per_sec);
         Serial.printf("F_pulse:%.1f ", actual_pulse_frequency);
-        Serial.printf("pot:%f ", read_potentiometer(&currentSense));
+        Serial.printf("pot:%f ", potmeter_value);
         Serial.println();
     }
 

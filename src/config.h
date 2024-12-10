@@ -16,6 +16,10 @@
 #define STIM_PWM_MINIMUM_OFF_TIME 4e-6f // limited by pwm-rejection of current sense. Experimentally determined to be 3.15us.
 #define STIM_PWM_MAX_DUTY_CYCLE float(1 - STIM_PWM_MINIMUM_OFF_TIME * STIM_PWM_FREQ)
 
+// potentiometer volume control
+#define POTMETER_ZERO_PERCENT_VOLTAGE      3.3f
+#define POTMETER_HUNDRED_PERCENT_VOLTAGE   0.0f
+
 // initial conditions and limits for the model
 #define MODEL_RESISTANCE_INIT 2.0f
 #define MODEL_RESISTANCE_MIN 1.0f

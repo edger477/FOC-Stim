@@ -56,4 +56,8 @@ Control over serial with Restim.
 
 View live stats with teleplot.
 
+The onboard pot can be used to control the signal intensity.
+If you only want to use software control, turn it all the way clockwise.
+You can desolder the pot and use the pins to wire an external pot for your box.
+
 All restim features are supported except: vibration.

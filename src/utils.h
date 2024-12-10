@@ -12,6 +12,7 @@ float norm(float x, float y);
 
 // linear interpolate
 float lerp(float p, float a, float b);
+float inverse_lerp(float v, float a, float b);
 
 void estimate_resistance_and_inductance(float voltage_peak, BLDCDriver6PWM *driver, CurrentSense *currentSense);
 
