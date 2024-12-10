@@ -1,0 +1,4 @@
+protoboard 8cmx2cm: https://www.amazon.de/-/en/gp/product/B0BB2GS422
+dc socket 5.5x2.1: https://www.amazon.de/gp/product/B09PD6J4BN/
+3.5mm socket: https://www.amazon.de/-/en/gp/product/B097JHNTC7
+Capacitor 1000-2000 uF 25+v
