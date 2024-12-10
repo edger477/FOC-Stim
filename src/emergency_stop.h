@@ -16,7 +16,7 @@ public:
     void check_current_limits(float a, float b, float c);
 
     // check if VBUS is within safe limits
-    void check_vbus();
+    void check_vbus_overvoltage();
 
     // check if temperature is within safe limits
     void check_temperature();

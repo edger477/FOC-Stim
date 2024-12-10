@@ -21,27 +21,42 @@ Trace trace{};
 
 EmergencyStop emergencyStop{};
 
-static bool vbus_online = false;
-static bool play_started = false;
+static bool status_booted = false;
+static bool status_vbus = false;
+static bool status_estop = false;
+static bool status_playing = false;
+
 static Clock keepalive_clock{};
+
+
+void print_status() {
+    uint32_t status =
+        (status_booted << 0)
+        | (status_vbus << 1)
+        | (status_estop << 2)
+        | (status_playing << 3);
+    Serial.printf("status: %lu\r\n", status);
+}
+
 
 void tcode_D0() {
     Serial.println();
-    Serial.printf("FOC-Stim 0.2\r\n");
+    Serial.printf("version: FOC-Stim 0.3\r\n");
+    print_status();
 }
 
 void tcode_DSTART() {
-    if (vbus_online && !play_started) {
+    if (status_vbus && !status_playing) {
         Serial.printf("Pulse generation started\r\n");
+        status_playing = true;
     }
-    play_started = true;
 }
 
 void tcode_DSTOP() {
-    if (vbus_online && play_started) {
+    if (status_vbus && status_playing) {
         Serial.printf("Pulse generation stopped\r\n");
+        status_playing = false;
     }
-    play_started = false;
 }
 
 void tcode_DPING() {
@@ -86,6 +101,9 @@ void setup()
     // comment out if not needed
     // SimpleFOCDebug::enable(&Serial);
 
+    // print status to let the computer know we have rebooted.
+    print_status();
+
     Serial.println("- init driver");
     driver.voltage_power_supply = STIM_PSU_VOLTAGE;
     driver.pwm_frequency = STIM_PWM_FREQ;
@@ -110,29 +128,12 @@ void setup()
     Serial.printf("- init mrac\r\n");
     mrac.init(&driver, &currentSense, &emergencyStop);
 
-    Clock vbus_clock;
-    while (1)
-    {
-        tcode.update_from_serial();
-        vbus_clock.step();
-        float vbus = read_vbus(&currentSense);
-        if (vbus > STIM_PSU_VOLTAGE_MAX || vbus < STIM_PSU_VOLTAGE_MIN)
-        {
-            if (vbus_clock.time_seconds > 4.f) {
-                Serial.printf("V_BUS:%f waiting for V_BUS to come online...\r\n", vbus);
-                vbus_clock.reset();
-            }
-        }
-        else
-        {
-            vbus_online = true;
-            delay(50);
-            Serial.printf("V_BUS:%f\r\n", vbus);
-            break;
-        }
+    status_booted = true;
+    float vbus = read_vbus(&currentSense);
+    if (vbus > STIM_PSU_VOLTAGE_MIN) {
+        status_vbus = true;
     }
-    play_started = false;
-    Serial.printf("Device ready. Awaiting DSTART.\r\n");
+    print_status();
 }
 
 void loop()
@@ -141,6 +142,9 @@ void loop()
     static float pulse_total_duration = 0;
     static Clock actual_pulse_frequency_clock;
     static Clock rms_current_clock;
+    static Clock status_print_clock;
+    static Clock vbus_print_clock;
+    static Clock vbus_high_clock;
     static uint32_t pulse_counter = 0;
     static float actual_pulse_frequency = 0;
 
@@ -148,21 +152,54 @@ void loop()
     bool dirty = tcode.update_from_serial();
 
     // safety checks
-    emergencyStop.check_vbus();
     emergencyStop.check_temperature();
+    emergencyStop.check_vbus_overvoltage();
 
-    // keepalive timer
+    // check vbus, stop playing if vbus is too low.
+    float vbus = read_vbus(&currentSense);
+    if (vbus < STIM_PSU_VOLTAGE_MIN) {
+        vbus_high_clock.reset();
+
+        // vbus changed high->low.
+        if (status_vbus) {
+            read_vbus(&currentSense);
+            status_vbus = false;
+            status_playing = false;
+            Serial.printf("V_BUS under-voltage detected (V_BUS = %.2f). Stopping pulse generation.\r\n", vbus);
+            print_status();
+            vbus_print_clock.reset();
+        }
+
+        // print something if vbus has been low for a while to alert user they should flip power switch on the device.
+        vbus_print_clock.step();
+        if (vbus_print_clock.time_seconds > 4) {
+            vbus_print_clock.reset();
+            Serial.printf("V_BUS too low: %.2f\r\n", vbus);
+        }
+    } else {
+        // if vbus is high and stable
+        if (!status_vbus && vbus_high_clock.time_seconds > 0.2f) {
+            Serial.printf("V_BUS online. V_BUS: %.2f\r\n", vbus);
+            status_vbus = true;
+            status_playing = false;
+            print_status();
+        }
+        vbus_high_clock.step();
+    }
+
+    // keepalive timer. Stop playing if no messages have been received for some time.
     if (dirty) {
         keepalive_clock.reset();
     }
     keepalive_clock.step();
-    if (keepalive_clock.time_seconds > 2 && play_started) {
+    if (keepalive_clock.time_seconds > 2 && status_playing) {
         Serial.println("Connection lost? Stopping pulse generation.");
-        play_started = false;
+        status_playing = false;
+        print_status();
     }
 
     // DSTART / DSTOP
-    if (! play_started) {
+    if (! status_playing) {
         delay(10);
         return;
     }

@@ -43,15 +43,15 @@ void EmergencyStop::check_current_limits(float neutral, float left, float right)
     }
 }
 
-void EmergencyStop::check_vbus()
+void EmergencyStop::check_vbus_overvoltage()
 {
     float vbus = read_vbus(currentSense);
-    if (vbus > STIM_PSU_VOLTAGE_MAX || vbus < STIM_PSU_VOLTAGE_MIN)
+    if (vbus > STIM_PSU_VOLTAGE_MAX)
     {
         trigger_emergency_stop();
         while (1)
         {
-            Serial.printf("V_BUS over/undervoltage detected %f. Current V_BUS=%f. Restart device to proceed\r\n",
+            Serial.printf("V_BUS overvoltage detected %.2f. Current V_BUS=%.2f. Restart device to proceed\r\n",
                           vbus, read_vbus(currentSense));
             delay(5000);
         }
@@ -66,7 +66,7 @@ void EmergencyStop::check_temperature()
         trigger_emergency_stop();
         while (1)
         {
-            Serial.printf("temperature limit exceeded %f. Current temperature=%f. Restart device to proceed\r\n",
+            Serial.printf("temperature limit exceeded %.2f. Current temperature=%.2f. Restart device to proceed\r\n",
                           temperature, read_temperature(currentSense));
             delay(5000);
         }
