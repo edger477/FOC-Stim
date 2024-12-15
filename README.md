@@ -13,13 +13,14 @@ Powered by SimpleFOC.
 BOM:
 
 * B-G431B-ESC1
-* USB cable and 12v
+* USB cable
+* 12v power supply (0.5A minimum)
 * 3x transformer (XICON 42TU200-RC suggested)
-* 3x inductor (220µH - 470µH)
+* 3x inductor (220µH, 1A)
 * 3x ceramic caps (10µF 50v)
 
 When selecting an inductor, look for saturation current about 1A and flat inductance-current curve in the datasheet. Some options:
-* KEMET SBCP-11HY221H to SBCP-11HY471H. 80HY or 14HY series also a possibility.
+* KEMET SBCP-11HY221H. 80HY or 14HY series also a possibility.
 * Fastron 09HVP or 09HCP series.
 * Coilcraft RFB0810 or RFB1010 or RFS1317 series
 * Coilcraft DR0608-224L, usable if cramped for space
