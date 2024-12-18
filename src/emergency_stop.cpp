@@ -29,9 +29,6 @@ void EmergencyStop::check_current_limits()
 
 void EmergencyStop::check_current_limits(float neutral, float left, float right)
 {
-    max_recorded_current_neutral = abs(max_recorded_current_neutral) > abs(neutral) ? max_recorded_current_neutral : neutral;
-    max_recorded_current_left = abs(max_recorded_current_left) > abs(left) ? max_recorded_current_left : left;
-    max_recorded_current_right = abs(max_recorded_current_right) > abs(right) ? max_recorded_current_right : right;
     if (max({abs(neutral), abs(left), abs(right)}) > ESTOP_CURRENT_LIMIT)
     {
         trigger_emergency_stop();
@@ -79,7 +76,7 @@ void EmergencyStop::trigger_emergency_stop()
     // drain the inductors as fast as possible.
     driver->setPwm(0, 0, 0);
     delayMicroseconds(200);
-    // disable all phases just in case one of the mosfets blew up.
+    // disable all phases just in case one of the mosfets blew up. Not sure if implemented on the B-G431B?
     driver->setPhaseState(PHASE_OFF, PHASE_OFF, PHASE_OFF);
     driver->setPwm(0, 0, 0);
     debug_fn();

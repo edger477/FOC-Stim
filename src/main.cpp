@@ -4,20 +4,21 @@
 #include "tcode.h"
 #include "utils.h"
 #include "stim_clock.h"
-#include "pulse_single.h"
-#include "pulse_threephase.h"
+#include "pulse/threephase_pulse_buffer.h"
 #include "mrac_threephase_star.h"
+#include "threephase_driver.h"
 #include "config.h"
 #include "emergency_stop.h"
 #include "trace.h"
 
-BLDCDriver6PWM driver = BLDCDriver6PWM(A_PHASE_UH, A_PHASE_UL, A_PHASE_VH, A_PHASE_VL, A_PHASE_WH, A_PHASE_WL);
+BLDCDriver6PWM bldc_driver = BLDCDriver6PWM(A_PHASE_UH, A_PHASE_UL, A_PHASE_VH, A_PHASE_VL, A_PHASE_WH, A_PHASE_WL);
 // Gain calculation shown at https://community.simplefoc.com/t/b-g431b-esc1-current-control/521/21
 LowsideCurrentSense currentSense = LowsideCurrentSense(0.003f, -64.0f / 7.0f, A_OP1_OUT, A_OP2_OUT, A_OP3_OUT);
 
 MRACThreephaseStar mrac{};
-ThreephasePulse pulse_threephase{};
+ThreephasePulseBuffer pulse_threephase{};
 Trace trace{};
+ThreePhaseDriver threephase_driver{};
 
 EmergencyStop emergencyStop{};
 
@@ -41,7 +42,7 @@ void print_status() {
 
 void tcode_D0() {
     Serial.println();
-    Serial.printf("version: FOC-Stim 0.3\r\n");
+    Serial.printf("version: FOC-Stim 0.4\r\n");
     print_status();
 }
 
@@ -68,7 +69,7 @@ struct
     TCodeAxis alpha{"L0", 0, -1, 1};
     TCodeAxis beta{"L1", 0, -1, 1};
     TCodeAxis volume{"V0", 0, 0, TCODE_MAX_CURRENT};
-    TCodeAxis carrier_frequency{"A0", 800, 500, 1000};
+    TCodeAxis carrier_frequency{"A0", 800, 500, 1500};
     TCodeAxis pulse_frequency{"A1", 50, 1, 100};
     TCodeAxis pulse_width{"A2", 6, 3, 20};
     TCodeAxis pulse_rise{"A3", 5, 2, 10};
@@ -105,15 +106,15 @@ void setup()
     print_status();
 
     Serial.println("- init driver");
-    driver.voltage_power_supply = STIM_PSU_VOLTAGE;
-    driver.pwm_frequency = STIM_PWM_FREQ;
-    driver.init();
+    bldc_driver.voltage_power_supply = STIM_PSU_VOLTAGE;
+    bldc_driver.pwm_frequency = STIM_PWM_FREQ;
+    bldc_driver.init();
 
     Serial.println("- init emergency stop");
-    emergencyStop.init(&driver, &currentSense, &estop_triggered);
+    emergencyStop.init(&bldc_driver, &currentSense, &estop_triggered);
 
     Serial.println("- init current sense");
-    currentSense.linkDriver(&driver);
+    currentSense.linkDriver(&bldc_driver);
     int current_sense_err = currentSense.init();
     if (current_sense_err != 1)
     {
@@ -123,10 +124,12 @@ void setup()
         {
         }
     }
-    driver.enable();
+    bldc_driver.enable();
+
+    threephase_driver.init(&bldc_driver, &currentSense);
 
     Serial.printf("- init mrac\r\n");
-    mrac.init(&driver, &currentSense, &emergencyStop);
+    mrac.init(&threephase_driver, &currentSense, &emergencyStop);
 
     status_booted = true;
     float vbus = read_vbus(&currentSense);
@@ -154,6 +157,7 @@ void loop()
     // safety checks
     emergencyStop.check_temperature();
     emergencyStop.check_vbus_overvoltage();
+    emergencyStop.check_current_limits();   // not really needed since all phases connected to ground at this point.
 
     // check vbus, stop playing if vbus is too low.
     float vbus = read_vbus(&currentSense);
@@ -197,6 +201,9 @@ void loop()
         status_playing = false;
         print_status();
     }
+
+    // correct for drift in the current sense circuit
+    threephase_driver.adjust_offsets();
 
     // DSTART / DSTOP
     if (! status_playing) {
@@ -262,41 +269,19 @@ void loop()
     total_pulse_length_timer.step();
     traceline->dt_compute = total_pulse_length_timer.dt_micros;
 
-    // reset mrac stats
-    mrac.v_drive_max = 0;
-
     // play the pulse
-    mrac.pulse_begin();
-    uint32_t number_of_iterations = 0;
-    Clock pulse_active_timer;
-    while (pulse_active_timer.time_seconds < pulse_threephase.pulse_duration)
-    {
-        number_of_iterations++;
-        pulse_active_timer.step();
-        float desired_current_neutral = 0;
-        float desired_current_left = 0;
-        pulse_threephase.get(pulse_active_timer.time_seconds,
-                             &desired_current_neutral, &desired_current_left);
-        mrac.iter(desired_current_neutral, desired_current_left);
-    }
-    pulse_active_timer.step();
-
-    // wait until the lines stabilize
-    Clock pulse_stabilize_timer;
-    mrac.pulse_end();
-    pulse_stabilize_timer.step();
+    mrac.play_pulse(&pulse_threephase);
+    total_pulse_length_timer.step();
 
     // store stats
     Clock stats_timer;
-    float iters_per_sec = number_of_iterations / pulse_active_timer.time_seconds;
-    traceline->mrac_iters = number_of_iterations;
-    traceline->dt_play = pulse_active_timer.time_micros;
-    traceline->dt_stabilize = pulse_stabilize_timer.time_micros;
+    traceline->dt_play = total_pulse_length_timer.dt_micros;
 
+    traceline->skipped_update_steps = mrac.skipped_update_steps;
     traceline->v_drive_max = mrac.v_drive_max;
-    traceline->max_recorded_current_neutral = emergencyStop.max_recorded_current_neutral;
-    traceline->max_recorded_current_left = emergencyStop.max_recorded_current_left;
-    traceline->max_recorded_current_right = emergencyStop.max_recorded_current_right;
+    traceline->max_recorded_current_neutral = mrac.current_max_neutral;
+    traceline->max_recorded_current_left = mrac.current_max_left;
+    traceline->max_recorded_current_right = mrac.current_max_right;
 
     traceline->R_neutral = mrac.estimate_resistance_neutral();
     traceline->R_left = mrac.estimate_resistance_left();
@@ -317,13 +302,14 @@ void loop()
     {
         Serial.print("$");
         Serial.printf("V_drive:%.2f ", mrac.v_drive_max);
-        Serial.printf("I_max_a:%f ", abs(emergencyStop.max_recorded_current_neutral));
-        Serial.printf("I_max_b:%f ", abs(emergencyStop.max_recorded_current_left));
-        Serial.printf("I_max_c:%f ", abs(emergencyStop.max_recorded_current_right));
+        Serial.printf("I_max_a:%f ", abs(mrac.current_max_neutral));
+        Serial.printf("I_max_b:%f ", abs(mrac.current_max_left));
+        Serial.printf("I_max_c:%f ", abs(mrac.current_max_right));
         Serial.println();
-        emergencyStop.max_recorded_current_neutral = 0;
-        emergencyStop.max_recorded_current_left = 0;
-        emergencyStop.max_recorded_current_right = 0;
+        mrac.v_drive_max = 0;
+        mrac.current_max_neutral = 0;
+        mrac.current_max_left = 0;
+        mrac.current_max_right = 0;
     }
     if ((pulse_counter + 4) % 10 == 0)
     {
@@ -333,21 +319,22 @@ void loop()
     {   
         rms_current_clock.step();
         Serial.print("$");
-        Serial.printf("rms_neutral:%f ", sqrtf(mrac.current_squared_a / rms_current_clock.dt_seconds));
-        Serial.printf("rms_left:%f ", sqrtf(mrac.current_squared_b / rms_current_clock.dt_seconds));
-        Serial.printf("rms_right:%f ", sqrtf(mrac.current_squared_c / rms_current_clock.dt_seconds));
+        Serial.printf("rms_neutral:%f ", sqrtf(mrac.current_squared_neutral / rms_current_clock.dt_seconds));
+        Serial.printf("rms_left:%f ", sqrtf(mrac.current_squared_left / rms_current_clock.dt_seconds));
+        Serial.printf("rms_right:%f ", sqrtf(mrac.current_squared_right / rms_current_clock.dt_seconds));
         Serial.println();
-        mrac.current_squared_a = 0;
-        mrac.current_squared_b = 0;
-        mrac.current_squared_c = 0;
+        mrac.current_squared_neutral = 0;
+        mrac.current_squared_left = 0;
+        mrac.current_squared_right = 0;
     }
     if ((pulse_counter + 8) % 20 == 0)
     {
         Serial.print("$");
         Serial.printf("V_BUS:%.2f ", read_vbus(&currentSense));
         Serial.printf("temp:%.1f ", read_temperature(&currentSense));
-        Serial.printf("F_mrac:%.0f ", iters_per_sec);
         Serial.printf("F_pulse:%.1f ", actual_pulse_frequency);
+        Serial.printf("model_steps:%i ", mrac.pwm_write_index);
+        Serial.printf("model_skips:%i ", mrac.skipped_update_steps);
         Serial.printf("pot:%f ", potmeter_value);
         Serial.println();
     }

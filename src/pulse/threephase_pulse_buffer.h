@@ -1,5 +1,5 @@
-#ifndef FOCSTIM_PULSE_THREEPHASE_H
-#define FOCSTIM_PULSE_THREEPHASE_H
+#ifndef FOCSTIM_THREEPHASE_PULSE_BUFFER_H
+#define FOCSTIM_THREEPHASE_PULSE_BUFFER_H
 
 #include <math.h>
 #include <cstdint>
@@ -7,10 +7,10 @@
 #include "config.h"
 #include "utils.h"
 
-class ThreephasePulse
+class ThreephasePulseBuffer
 {
 public:
-    ThreephasePulse() = default;
+    ThreephasePulseBuffer() = default;
 
     void create_pulse(
         float current_amplitude,
@@ -43,9 +43,9 @@ public:
 
     void print();
 
-    float pulse_duration = 0;
-    float a[THREEPHASE_PULSE_BUFFER_SIZE];
-    float b[THREEPHASE_PULSE_BUFFER_SIZE];
+    float pulse_duration = 0;               // seconds
+    float a[THREEPHASE_PULSE_BUFFER_SIZE];  // neutral electrode
+    float b[THREEPHASE_PULSE_BUFFER_SIZE];  // left electrode
 };
 
-#endif // FOCSTIM_PULSE_THREEPHASE_H
+#endif // FOCSTIM_THREEPHASE_PULSE_BUFFER_H
