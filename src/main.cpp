@@ -290,8 +290,8 @@ void loop()
     Clock stats_timer;
     float iters_per_sec = number_of_iterations / pulse_active_timer.time_seconds;
     traceline->mrac_iters = number_of_iterations;
-    traceline->dt_play = pulse_active_timer.time_milis;
-    traceline->dt_stabilize = pulse_stabilize_timer.time_milis;
+    traceline->dt_play = pulse_active_timer.time_micros;
+    traceline->dt_stabilize = pulse_stabilize_timer.time_micros;
 
     traceline->v_drive_max = mrac.v_drive_max;
     traceline->max_recorded_current_neutral = emergencyStop.max_recorded_current_neutral;

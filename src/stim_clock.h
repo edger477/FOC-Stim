@@ -16,7 +16,7 @@ public:
     void reset()
     {
         time_seconds = 0;
-        time_milis = 0;
+        time_micros = 0;
         last_update_time = micros();
     }
 
@@ -26,13 +26,13 @@ public:
         uint32_t elapsed = new_time - last_update_time;
         last_update_time = new_time;
         time_seconds += float(elapsed) * 1e-6f;
-        time_milis += elapsed;
+        time_micros += elapsed;
         dt_seconds = float(elapsed) * 1e-6f;
         dt_micros = elapsed;
     }
 
     float time_seconds = 0;
-    uint32_t time_milis = 0;
+    uint32_t time_micros = 0;
     float dt_seconds = 0;
     uint32_t dt_micros = 0;
     uint32_t last_update_time = 0;
