@@ -5,9 +5,12 @@
 
 #include "config.h"
 
+
 class BLDCDriver;
 class CurrentSense;
 class EmergencyStop;
+class ThreePhaseDriver;
+class ThreephasePulseBuffer;
 
 /*
 MRAC model for threephase system with:
@@ -83,39 +86,51 @@ public:
     static constexpr float R_min = MODEL_RESISTANCE_MIN;
     static constexpr float R_max = MODEL_RESISTANCE_MAX;
 
-    static constexpr float estimated_loop_frequency = 28000;
-    static constexpr float observer_cutoff_frequency = 300;
-
     static constexpr float A = -R0 / L0;
     static constexpr float B = 1 / L0;
     static constexpr float P = -1;
 
-    static constexpr int DEBUG_NUM_ENTRIES = 400; // very RAM hungry
+    static constexpr unsigned context_size = 512;
+    static constexpr unsigned model_headstart = 10;         // number of model calculations before starting interrupt
+    static constexpr unsigned maximum_interrupt_lag = 15;   // maximum distance between model calculations and interrupt
+    static constexpr unsigned maximum_update_lag = 10;      // maximum distance between interrupt and model update
+    static_assert(context_size >= (maximum_interrupt_lag + maximum_update_lag + 5));
 
     MRACThreephaseStar();
 
-    void init(BLDCDriver *driver, CurrentSense *currentSense, EmergencyStop *emergencyStop);
+    void init(ThreePhaseDriver *driver, CurrentSense *currentSense, EmergencyStop *emergencyStop);
 
-    // call before starting a pulse to take hardware out of low-power safe state.
-    void pulse_begin();
+    void play_pulse(ThreephasePulseBuffer *pulse);
 
-    // call after a pulse to configure the hardware in low-power safe state.
-    void pulse_end();
+    void interrupt_fn();
 
-    // call this as fast as possible when generating a pulse.
-    void iter(float desired_current_neutral, float desired_current_left);
+    float estimate_inductance()
+    {
+        return L0 * Kr;
+        // The true inductance is actually dt / ln(1 - dt / (L0 * Kr))
+    }
 
-    float estimate_inductance();
-    float estimate_resistance_neutral();
-    float estimate_resistance_left();
-    float estimate_resistance_right();
+    float estimate_resistance_neutral()
+    {
+        return (R0 * Kr - 3 * Ka);
+    }
+
+    float estimate_resistance_left()
+    {
+        return (R0 * Kr - 3 * Kb);
+    }
+
+    float estimate_resistance_right()
+    {
+        return (R0 * Kr - 3 * Kc);
+    }
 
     void print_debug_stats();
 
-    unsigned debug_counter = 0;
-    uint32_t last_update = 0;
+    void perform_model_update_step();
 
-    BLDCDriver *driver = nullptr;
+
+    ThreePhaseDriver *driver = nullptr;
     CurrentSense *currentSense = nullptr;
     EmergencyStop *emergencyStop = nullptr;
 
@@ -124,33 +139,43 @@ public:
     float Ka = 0;                 // R0 * Kr - 3 * Ka = Ra
     float Kb = 0;                 // R0 * Kr - 3 * Kb = Rb
     float Kc = 0;                 // R0 * Kr - 3 * Kc = Rc
-    float xHat_a = 0, xHat_b = 0; // estimated system current
-
-    uint32_t is_stabilized = 0;
-
-    struct state_history_t
-    {
-        float r_a;
-        float r_b;
-        float xHat_a;
-        float xHat_b;
-    } state_lag1 = {};
 
     // log stats
     float v_drive_max = 0;
-    float current_squared_a = 0;
-    float current_squared_b = 0;
-    float current_squared_c = 0;
+    float current_squared_neutral = 0;
+    float current_squared_left = 0;
+    float current_squared_right = 0;
+    float current_max_neutral = 0;
+    float current_max_left = 0;
+    float current_max_right = 0;
 
-    // more log stats
-    struct
-    {
-        float r_a, r_b;
-        float u_a, u_b;
-        float x_a, x_b, x_c;
-        float xHat_a, xHat_b;
-        float desired_a, desired_b;
-    } debug[DEBUG_NUM_ENTRIES] = {};
+    volatile struct {
+        // the voltages to be written to pwm by the interrupt
+        // indices before 'pwm_write_index' are valid.
+        float pwm_voltage_neutral;
+        float pwm_voltage_left;
+        float pwm_voltage_right;
+
+        // the adc currents read by the interrupt
+        // indices before `interrupt_index - 2` are valid.
+        float adc_current_neutral;
+        float adc_current_left;
+        float adc_current_right;
+
+        // variables needed for update step
+        float xHat_a;
+        float xHat_b;
+        float r_a;
+        float r_b;
+    } context[context_size];
+
+    volatile int pwm_write_index = 0;
+    volatile int interrupt_index = 0;
+    int model_update_index = 0;
+    int skipped_update_steps = 0;
+
+    volatile bool buffer_underrun_detected = false;
+    volatile bool current_limit_exceeded = false;
 };
 
 #endif // FOCSTIM_MRAC_THREEPHASE_STAR_H

@@ -1,4 +1,4 @@
-#include "pulse_threephase.h"
+#include "pulse/threephase_pulse_buffer.h"
 
 #include <math.h>
 #include <cstdint>
@@ -45,7 +45,7 @@ static void get_calibration_coefs(
     }
 }
 
-void ThreephasePulse::create_pulse(
+void ThreephasePulseBuffer::create_pulse(
     float current_amplitude,
     float alpha, float beta, float carrier_frequency,
     float pulse_width, float pulse_rise,
@@ -161,7 +161,7 @@ void ThreephasePulse::create_pulse(
     }
 }
 
-void ThreephasePulse::print()
+void ThreephasePulseBuffer::print()
 {
     for (int i = 0; i < THREEPHASE_PULSE_BUFFER_SIZE; i++)
     {

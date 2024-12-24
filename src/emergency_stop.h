@@ -16,17 +16,13 @@ public:
     void check_current_limits(float a, float b, float c);
 
     // check if VBUS is within safe limits
-    void check_vbus();
+    void check_vbus_overvoltage();
 
     // check if temperature is within safe limits
     void check_temperature();
 
     // Put hardware in safe state, then call the debug function
     void trigger_emergency_stop();
-
-    float max_recorded_current_neutral = 0;
-    float max_recorded_current_left = 0;
-    float max_recorded_current_right = 0;
 
     BLDCDriver6PWM *driver = nullptr;
     CurrentSense *currentSense = nullptr;

@@ -19,6 +19,12 @@ float lerp(float p, float a, float b)
     return a + min(1.0f, max(0.0f, p)) * (b - a);
 }
 
+float inverse_lerp(float v, float a, float b)
+{
+    float p = (a - v) / (a - b);
+    return _constrain(p, 0.f, 1.f);
+}
+
 float mean(float *arr, int num)
 {
     float sum = 0;

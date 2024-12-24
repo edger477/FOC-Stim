@@ -9,9 +9,8 @@ struct MainLoopTraceLine
     uint32_t t_start;
     uint32_t dt_compute;
     uint32_t dt_play;
-    uint32_t dt_stabilize;
     uint32_t dt_logs;
-    uint32_t mrac_iters;
+    int skipped_update_steps;
     float v_drive_max;
     float max_recorded_current_neutral;
     float max_recorded_current_left;
@@ -38,17 +37,16 @@ public:
     void print_mainloop_trace()
     {
         Serial.printf("mainloop timings:\r\n");
-        Serial.printf("     start|   compute|      play| stabilize|      logs|     niter|\r\n");
+        Serial.printf("     start|   compute|      play|      logs|     skips|\r\n");
         for (int i = 0; i < MAINLOOP_NUM_ENTRIES; i++)
         {
             MainLoopTraceLine *p = &main_loop_trace[(i + main_loop_trace_index) % MAINLOOP_NUM_ENTRIES];
-            Serial.printf("%10lu %10lu %10lu %10lu %10lu %10lu\r\n",
+            Serial.printf("%10lu %10lu %10lu %10lu %10i\r\n",
                           p->t_start,
                           p->dt_compute,
                           p->dt_play,
-                          p->dt_stabilize,
                           p->dt_logs,
-                          p->mrac_iters);
+                          p->skipped_update_steps);
         }
         Serial.println();
         Serial.printf("mainloop signals:\r\n");

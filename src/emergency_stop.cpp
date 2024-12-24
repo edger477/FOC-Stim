@@ -29,9 +29,6 @@ void EmergencyStop::check_current_limits()
 
 void EmergencyStop::check_current_limits(float neutral, float left, float right)
 {
-    max_recorded_current_neutral = abs(max_recorded_current_neutral) > abs(neutral) ? max_recorded_current_neutral : neutral;
-    max_recorded_current_left = abs(max_recorded_current_left) > abs(left) ? max_recorded_current_left : left;
-    max_recorded_current_right = abs(max_recorded_current_right) > abs(right) ? max_recorded_current_right : right;
     if (max({abs(neutral), abs(left), abs(right)}) > ESTOP_CURRENT_LIMIT)
     {
         trigger_emergency_stop();
@@ -43,15 +40,15 @@ void EmergencyStop::check_current_limits(float neutral, float left, float right)
     }
 }
 
-void EmergencyStop::check_vbus()
+void EmergencyStop::check_vbus_overvoltage()
 {
     float vbus = read_vbus(currentSense);
-    if (vbus > STIM_PSU_VOLTAGE_MAX || vbus < STIM_PSU_VOLTAGE_MIN)
+    if (vbus > STIM_PSU_VOLTAGE_MAX)
     {
         trigger_emergency_stop();
         while (1)
         {
-            Serial.printf("V_BUS over/undervoltage detected %f. Current V_BUS=%f. Restart device to proceed\r\n",
+            Serial.printf("V_BUS overvoltage detected %.2f. Current V_BUS=%.2f. Restart device to proceed\r\n",
                           vbus, read_vbus(currentSense));
             delay(5000);
         }
@@ -66,7 +63,7 @@ void EmergencyStop::check_temperature()
         trigger_emergency_stop();
         while (1)
         {
-            Serial.printf("temperature limit exceeded %f. Current temperature=%f. Restart device to proceed\r\n",
+            Serial.printf("temperature limit exceeded %.2f. Current temperature=%.2f. Restart device to proceed\r\n",
                           temperature, read_temperature(currentSense));
             delay(5000);
         }
@@ -79,7 +76,7 @@ void EmergencyStop::trigger_emergency_stop()
     // drain the inductors as fast as possible.
     driver->setPwm(0, 0, 0);
     delayMicroseconds(200);
-    // disable all phases just in case one of the mosfets blew up.
+    // disable all phases just in case one of the mosfets blew up. Not sure if implemented on the B-G431B?
     driver->setPhaseState(PHASE_OFF, PHASE_OFF, PHASE_OFF);
     driver->setPwm(0, 0, 0);
     debug_fn();
